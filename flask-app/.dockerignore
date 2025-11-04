@@ -1,0 +1,13 @@
+# filepath: /flask-app/flask-app/.dockerignore
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+.env
+venv/
+__init__.py
+tests/
