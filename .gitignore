@@ -1,2 +1,5 @@
 .env
 .venv
+Claude-Code-Communication/
+__pycache__/
+node_modules/

@@ -1,16 +1,12 @@
-import psycopg2
-from psycopg2 import sql
+import os
+import sys
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-# --- PostgreSQL接続情報 ---
-# ご自身の環境に合わせて、ユーザー名、パスワード、ホスト、ポート、データベース名を変更してください
-DB_NAME = "miscat_db"
-DB_USER = "admin"
-DB_PASSWORD = "password"
-DB_HOST = "localhost"
-DB_PORT = "5432"
+from psycopg2 import Error as Psycopg2Error
+from app.db.connect import get_db_connection
 
-# --- テーブル作成SQL ---
-# Userクラスの属性に基づいてテーブルを定義します
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -23,41 +19,46 @@ CREATE TABLE IF NOT EXISTS users (
 );
 """
 
-def create_user_table():
+def create_user_table(conn=None):
     """
-    PostgreSQLデータベースに接続し、usersテーブルを作成します。
+    指定された接続（または get_db_connection() で取得した接続）を使って users テーブルを作成する。
+    外部から渡した接続は閉じません。内部で作成した接続はこの関数で閉じます。
+    戻り値: True 成功 / False 失敗
     """
-    conn = None
+    created_conn = False
+    if conn is None:
+        conn = get_db_connection()
+        created_conn = True
+
+    if conn is None:
+        print("データベース接続に失敗したためテーブルを作成できませんでした。", file=sys.stderr)
+        return False
+
     try:
-        # データベースに接続
-        conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            host=DB_HOST,
-            port=DB_PORT
-        )
-        
-        # カーソルを取得
-        cur = conn.cursor()
-        
-        # テーブル作成SQLを実行
-        cur.execute(CREATE_TABLE_SQL)
-        
-        # 変更をコミット
+        with conn.cursor() as cur:
+            cur.execute(CREATE_TABLE_SQL)
+        # テーブル作成はDDLなのでコミット
         conn.commit()
-        
-        print("テーブル'users'が正常に作成されました。")
-        
-    except psycopg2.Error as e:
-        print(f"データベースエラー: {e}")
-        
+        print("テーブル 'users' が正常に作成されました。")
+        return True
+
+    except Psycopg2Error as e:
+        # エラー時はロールバックして詳細を出力
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print(f"データベースエラー: {e}", file=sys.stderr)
+        return False
+
     finally:
-        # 接続を閉じる
-        if conn is not None:
-            cur.close()
-            conn.close()
-            print("データベース接続を閉じました。")
+        if created_conn:
+            try:
+                conn.close()
+                print("データベース接続を閉じました。")
+            except Exception as e:
+                print(f"接続クローズ時のエラー: {e}", file=sys.stderr)
+
 
 if __name__ == "__main__":
     create_user_table()
