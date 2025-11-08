@@ -1,4 +1,5 @@
-.PHONY: help up down logs logs-be logs-fe ps build restart migrate-be sh-be sh-fe sh-db install-be install-fe
+# .PHONY に clean を追加
+.PHONY: help up down clean logs logs-be logs-fe ps build restart migrate-be sh-be sh-fe sh-db install-be install-fe
 
 help:
 	@echo "----------------------------------------------------"
@@ -6,6 +7,7 @@ help:
 	@echo "----------------------------------------------------"
 	@echo " up           - Start all services in detached mode / すべてのサービスをデタッチモードで起動"
 	@echo " down         - Stop and remove all services / すべてのサービスを停止・削除"
+	@echo " clean        - Remove containers, local images, volumes and networks created by compose / composeで作成されたコンテナ・ローカルイメージ・ボリューム・ネットワークを削除"
 	@echo " logs         - View logs from all services / 全サービスのログを表示"
 	@echo " logs-be      - View backend logs / バックエンドのログを表示"
 	@echo " logs-fe      - View frontend logs / フロントエンドのログを表示"
@@ -21,50 +23,53 @@ help:
 	@echo "----------------------------------------------------"
 
 up:
-	docker-compose up -d --build
+	docker compose up -d --build
 
 down:
-	docker-compose down
+	docker compose down
+	 
+clean:
+	docker compose down --volumes --rmi local --remove-orphans
 
 logs:
-	docker-compose logs -f
+	docker compose logs -f
 
 logs-be:
-	docker-compose logs -f backend
+	docker compose logs -f backend
 
 logs-fe:
-	docker-compose logs -f frontend
+	docker compose logs -f frontend
 
 build:
-	docker-compose build
+	docker compose build
 
 restart: down up
 
 ps:
-	docker-compose ps
+	docker compose ps
 
 # --- Service Specific Commands ---
 
 sh-be:
-	docker-compose exec backend /bin/sh
+	docker compose exec backend /bin/sh
 
 sh-fe:
-	docker-compose exec frontend /bin/sh
+	docker compose exec frontend /bin/sh
 
 sh-db:
 	# .env ファイルから変数を読み込んでpsqlに接続 (awkで=の右側を取得)
-	docker-compose exec db psql -U $$(awk -F= '/^POSTGRES_USER=/{print $2}' .env) -d $$(awk -F= '/^POSTGRES_DB=/{print $2}' .env)
+	docker compose exec db psql -U $$(awk -F= '/^POSTGRES_USER=/{print $$2}' .env) -d $$(awk -F= '/^POSTGRES_DB=/{print $$2}' .env)
+# 	docker compose exec db psql -U admin -d miscat_db
 
 migrate-be:
 	@echo "Running DB migrations (assuming alembic)..."
-	# poetry run を削除し、直接 alembic を実行
-	docker-compose exec backend alembic upgrade head
+	docker compose exec backend alembic upgrade head
 
 install-be:
-	# uv pip install に変更。--group dev を追加して開発用依存もインストール
 	@echo "Installing/Updating backend dependencies (with dev) using uv..."
-	docker-compose exec backend uv pip install . --system --no-cache --group dev
+	# エラーになる --group dev を ".[dev]" (extras構文) に修正
+	docker compose exec backend uv pip install ".[dev]" --system --no-cache
 
 install-fe:
 	@echo "Installing/Updating frontend dependencies using npm..."
-	docker-compose exec frontend npm install
+	docker compose exec frontend npm install
