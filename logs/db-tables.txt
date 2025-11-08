@@ -1,0 +1,214 @@
+================================================================================
+データベーステーブル確認レポート
+================================================================================
+作成日時: 2025-11-09
+作成者: worker3
+
+【データベース接続情報】
+------------------------------------------------------------
+データベース名: commu_db
+ユーザー: fastapi_user
+ホスト: localhost
+ポート: 5432
+
+接続状態: ✓ 正常接続
+------------------------------------------------------------
+
+
+【テーブル一覧】
+------------------------------------------------------------
+$ docker exec finalwork-db-1 psql -U fastapi_user -d commu_db -c "\dt"
+
+                   List of relations
+ Schema |         Name          | Type  |    Owner     
+--------+-----------------------+-------+--------------
+ public | alembic_version       | table | fastapi_user
+ public | channels              | table | fastapi_user
+ public | files                 | table | fastapi_user
+ public | messages              | table | fastapi_user
+ public | tags                  | table | fastapi_user
+ public | user_tags             | table | fastapi_user
+ public | users                 | table | fastapi_user
+ public | wiki_page_permissions | table | fastapi_user
+ public | wiki_pages            | table | fastapi_user
+(9 rows)
+
+
+結果: ✓ 全8テーブル + alembic_version 確認完了
+------------------------------------------------------------
+
+
+【テーブル詳細】
+------------------------------------------------------------
+
+=== 1. users テーブル ===
+                           Table "public.users"
+     Column      |          Type          | Collation | Nullable | Default 
+-----------------+------------------------+-----------+----------+---------
+ id              | uuid                   |           | not null | 
+ username        | character varying(100) |           | not null | 
+ email           | character varying(255) |           | not null | 
+ hashed_password | character varying(255) |           | not null | 
+ kategori        | character varying(19)  |           | not null | 
+ gakuseki_bango  | character varying(50)  |           |          | 
+ faculty         | character varying(100) |           |          | 
+ icon_path       | character varying(255) |           |          | 
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+    "users_email_key" UNIQUE CONSTRAINT, btree (email)
+    "users_gakuseki_bango_key" UNIQUE CONSTRAINT, btree (gakuseki_bango)
+    "users_username_key" UNIQUE CONSTRAINT, btree (username)
+Referenced by:
+    TABLE "files" CONSTRAINT "files_uploader_id_fkey" FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "messages" CONSTRAINT "messages_receiver_id_fkey" FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "messages" CONSTRAINT "messages_sender_id_fkey" FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "tags" CONSTRAINT "tags_creator_id_fkey" FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "user_tags" CONSTRAINT "user_tags_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "wiki_page_permissions" CONSTRAINT "wiki_page_permissions_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "wiki_pages" CONSTRAINT "wiki_pages_creator_id_fkey" FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+
+
+=== 2. tags テーブル ===
+                                      Table "public.tags"
+   Column   |          Type          | Collation | Nullable |             Default              
+------------+------------------------+-----------+----------+----------------------------------
+ id         | integer                |           | not null | nextval('tags_id_seq'::regclass)
+ name       | character varying(100) |           | not null | 
+ creator_id | uuid                   |           | not null | 
+Indexes:
+    "tags_pkey" PRIMARY KEY, btree (id)
+    "tags_name_key" UNIQUE CONSTRAINT, btree (name)
+Foreign-key constraints:
+    "tags_creator_id_fkey" FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "user_tags" CONSTRAINT "user_tags_tag_id_fkey" FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+
+
+=== 3. wiki_pages テーブル ===
+                                        Table "public.wiki_pages"
+   Column   |            Type             | Collation | Nullable |                Default                 
+------------+-----------------------------+-----------+----------+----------------------------------------
+ id         | integer                     |           | not null | nextval('wiki_pages_id_seq'::regclass)
+ title      | character varying(255)      |           | not null | 
+ content    | text                        |           | not null | 
+ creator_id | uuid                        |           | not null | 
+ created_at | timestamp without time zone |           | not null | 
+ updated_at | timestamp without time zone |           | not null | 
+Indexes:
+    "wiki_pages_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "wiki_pages_creator_id_fkey" FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "files" CONSTRAINT "files_wiki_page_id_fkey" FOREIGN KEY (wiki_page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE
+    TABLE "wiki_page_permissions" CONSTRAINT "wiki_page_permissions_page_id_fkey" FOREIGN KEY (page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE
+
+
+=== 4. wiki_page_permissions テーブル ===
+                                        Table "public.wiki_page_permissions"
+      Column      |         Type         | Collation | Nullable |                      Default                      
+------------------+----------------------+-----------+----------+---------------------------------------------------
+ id               | integer              |           | not null | nextval('wiki_page_permissions_id_seq'::regclass)
+ page_id          | integer              |           | not null | 
+ user_id          | uuid                 |           | not null | 
+ permission_level | character varying(9) |           | not null | 
+Indexes:
+    "wiki_page_permissions_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "wiki_page_permissions_page_id_fkey" FOREIGN KEY (page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE
+    "wiki_page_permissions_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+
+
+=== 5. channels テーブル ===
+                                      Table "public.channels"
+   Column    |          Type          | Collation | Nullable |               Default                
+-------------+------------------------+-----------+----------+--------------------------------------
+ id          | integer                |           | not null | nextval('channels_id_seq'::regclass)
+ name        | character varying(100) |           | not null | 
+ description | character varying(500) |           |          | 
+ is_private  | boolean                |           | not null | 
+Indexes:
+    "channels_pkey" PRIMARY KEY, btree (id)
+    "channels_name_key" UNIQUE CONSTRAINT, btree (name)
+Referenced by:
+    TABLE "messages" CONSTRAINT "messages_channel_id_fkey" FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE
+
+
+=== 6. messages テーブル ===
+                                         Table "public.messages"
+   Column    |            Type             | Collation | Nullable |               Default                
+-------------+-----------------------------+-----------+----------+--------------------------------------
+ id          | integer                     |           | not null | nextval('messages_id_seq'::regclass)
+ content     | text                        |           | not null | 
+ sender_id   | uuid                        |           | not null | 
+ channel_id  | integer                     |           |          | 
+ receiver_id | uuid                        |           |          | 
+ created_at  | timestamp without time zone |           | not null | 
+Indexes:
+    "messages_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "messages_channel_id_fkey" FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE
+    "messages_receiver_id_fkey" FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+    "messages_sender_id_fkey" FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "files" CONSTRAINT "files_message_id_fkey" FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+
+
+=== 7. files テーブル ===
+                                         Table "public.files"
+    Column    |            Type             | Collation | Nullable |              Default              
+--------------+-----------------------------+-----------+----------+-----------------------------------
+ id           | integer                     |           | not null | nextval('files_id_seq'::regclass)
+ filename     | character varying(255)      |           | not null | 
+ file_path    | character varying(500)      |           | not null | 
+ file_size    | bigint                      |           | not null | 
+ mime_type    | character varying(100)      |           |          | 
+ uploader_id  | uuid                        |           | not null | 
+ message_id   | integer                     |           |          | 
+ wiki_page_id | integer                     |           |          | 
+ uploaded_at  | timestamp without time zone |           | not null | 
+Indexes:
+    "files_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "files_message_id_fkey" FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+    "files_uploader_id_fkey" FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE CASCADE
+    "files_wiki_page_id_fkey" FOREIGN KEY (wiki_page_id) REFERENCES wiki_pages(id) ON DELETE CASCADE
+
+
+=== 8. user_tags テーブル ===
+                             Table "public.user_tags"
+ Column  |  Type   | Collation | Nullable |                Default                
+---------+---------+-----------+----------+---------------------------------------
+ id      | integer |           | not null | nextval('user_tags_id_seq'::regclass)
+ user_id | uuid    |           | not null | 
+ tag_id  | integer |           | not null | 
+Indexes:
+    "user_tags_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "user_tags_tag_id_fkey" FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+    "user_tags_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+
+
+------------------------------------------------------------
+
+
+【テーブル統計情報】
+------------------------------------------------------------
+
+------------------------------------------------------------
+
+
+【整合性チェック】
+------------------------------------------------------------
+✓ users テーブル: 存在確認OK
+✓ tags テーブル: 存在確認OK
+✓ wiki_pages テーブル: 存在確認OK
+✓ wiki_page_permissions テーブル: 存在確認OK
+✓ channels テーブル: 存在確認OK
+✓ messages テーブル: 存在確認OK
+✓ files テーブル: 存在確認OK
+✓ user_tags テーブル: 存在確認OK
+
+全テーブルが正常に作成されていることを確認しました。
+
+------------------------------------------------------------
+

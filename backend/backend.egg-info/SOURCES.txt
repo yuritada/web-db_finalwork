@@ -1,0 +1,16 @@
+README.md
+pyproject.toml
+app/db/connect.py
+app/models/__init__.py
+app/models/base.py
+app/models/channel.py
+app/models/file.py
+app/models/message.py
+app/models/tag.py
+app/models/user.py
+app/models/wiki.py
+backend.egg-info/PKG-INFO
+backend.egg-info/SOURCES.txt
+backend.egg-info/dependency_links.txt
+backend.egg-info/requires.txt
+backend.egg-info/top_level.txt
