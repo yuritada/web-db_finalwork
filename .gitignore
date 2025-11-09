@@ -1,5 +1,6 @@
 .env
 .venv
-Claude-Code-Communication/
 __pycache__/
 node_modules/
+.DS_Store
+Claude-Code-Communication/
