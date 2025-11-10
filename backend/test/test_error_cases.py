@@ -362,3 +362,98 @@ def test_edge_case_empty_content(authenticated_client):
         status.HTTP_201_CREATED,
         status.HTTP_422_UNPROCESSABLE_ENTITY
     ]
+
+
+# ===== Phase 4: Channels & DM Error Cases =====
+
+def test_401_channels_unauthorized(client):
+    """チャンネル操作: 未認証"""
+    # Try to get channels without authentication
+    response = client.get("/channels")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # Try to create channel without authentication
+    response = client.post(
+        "/channels",
+        json={"name": "Unauthorized", "description": "Test", "is_private": False}
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_404_channel_messages_not_found(authenticated_client):
+    """チャンネルメッセージ: 存在しないチャンネル"""
+    # Try to get messages from non-existent channel
+    response = authenticated_client.get("/channels/99999/messages")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # Try to post message to non-existent channel
+    response = authenticated_client.post(
+        "/channels/99999/messages",
+        json={"content": "Hello"}
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_401_dm_unauthorized(client):
+    """DM送信: 未認証"""
+    # Try to send DM without authentication
+    response = client.post(
+        "/messages/dm",
+        json={"receiver_id": "00000000-0000-0000-0000-000000000000", "content": "Hello"}
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    # Try to get DM history without authentication
+    response = client.get("/messages/dm/00000000-0000-0000-0000-000000000000")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_422_invalid_channel_data(authenticated_client):
+    """チャンネル作成: 不正なデータ"""
+    # Missing required field (name)
+    response = authenticated_client.post(
+        "/channels",
+        json={"description": "No name", "is_private": False}
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    # Empty name
+    response = authenticated_client.post(
+        "/channels",
+        json={"name": "", "description": "Empty name", "is_private": False}
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def test_422_invalid_dm_data(authenticated_client):
+    """DM送信: 不正なデータ"""
+    # Missing content
+    response = authenticated_client.post(
+        "/messages/dm",
+        json={"receiver_id": "00000000-0000-0000-0000-000000000000"}
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    # Missing receiver_id
+    response = authenticated_client.post(
+        "/messages/dm",
+        json={"content": "Hello"}
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def test_422_invalid_message_content(authenticated_client, test_channel):
+    """チャンネルメッセージ: 不正なデータ"""
+    # Empty content
+    response = authenticated_client.post(
+        f"/channels/{test_channel.id}/messages",
+        json={"content": ""}
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    # Missing content
+    response = authenticated_client.post(
+        f"/channels/{test_channel.id}/messages",
+        json={}
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

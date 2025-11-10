@@ -6,9 +6,10 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from typing import Annotated
+import uuid
 
 from app.db.connect import get_session
-from app.db.read import get_user_by_username, get_wiki_permission, get_tag_by_id
+from app.db.read import get_user_by_username, get_user_by_id, get_wiki_permission, get_tag_by_id
 from app.core.config import settings
 from app.models.user import User, UserKategori
 from app.models.wiki import PermissionLevel
@@ -56,15 +57,21 @@ async def get_current_user(
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
-        username: str = payload.get("sub")
-        if username is None:
+        user_id_str: str = payload.get("sub")
+        if user_id_str is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
+
+        # UUIDにパース（auth.pyで user.id を str() したものを復元）
+        try:
+            user_id = uuid.UUID(user_id_str)
+        except (ValueError, AttributeError):
+            raise credentials_exception
+
     except JWTError:
         raise credentials_exception
 
-    # データベースからユーザーを取得
-    user = get_user_by_username(db, username=token_data.username)
+    # データベースからユーザーを取得（user.id で検索）
+    user = get_user_by_id(db, user_id)
     if user is None:
         raise credentials_exception
 

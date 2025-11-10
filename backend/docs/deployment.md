@@ -319,6 +319,23 @@ server {
         proxy_read_timeout 60s;
     }
 
+    # WebSocket Configuration (Phase 4)
+    location /ws/ {
+        proxy_pass http://backend_api;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket-specific timeouts
+        proxy_connect_timeout 7d;
+        proxy_send_timeout 7d;
+        proxy_read_timeout 7d;
+    }
+
     # Rate Limiting
     limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
     limit_req zone=api_limit burst=20 nodelay;
@@ -465,6 +482,13 @@ curl https://api.yourdomain.com/health
 
 # Expected response:
 {"status": "healthy"}
+
+# Check WebSocket endpoint (Phase 4)
+# Use wscat for WebSocket testing
+npm install -g wscat
+wscat -c wss://api.yourdomain.com/ws/channel/1
+
+# Expected: WebSocket connection established
 ```
 
 ### Log Management
@@ -681,7 +705,7 @@ curl https://api.yourdomain.com/health
 
 ### Pre-Deployment
 
-- [ ] All tests passing
+- [ ] All tests passing (94/94 tests ✅)
 - [ ] Code reviewed
 - [ ] Database migrations tested
 - [ ] .env file configured with production values
@@ -691,6 +715,8 @@ curl https://api.yourdomain.com/health
 - [ ] Firewall configured
 - [ ] Backup system in place
 - [ ] Monitoring configured
+- [ ] WebSocket endpoints tested (Phase 4)
+- [ ] nginx WebSocket proxy configured
 
 ### During Deployment
 

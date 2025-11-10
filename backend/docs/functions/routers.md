@@ -357,31 +357,215 @@ return user
 
 ---
 
-## 今後の拡張予定
+## app/routers/channels.py (Phase 4実装済み)
 
-Phase 2以降で実装予定の関数:
+チャンネルAPIエンドポイント。
 
-### app/routers/users.py
+### create_new_channel エンドポイント
 
-- `update_user`: ユーザー情報更新
-- `upload_icon`: アイコン画像アップロード
-- `get_user_by_id`: 他ユーザーの公開情報取得
-- `search_users`: ユーザー検索
+**説明**: チャンネルを作成する。
 
-### app/routers/tags.py
+**シグネチャ**:
+```python
+@router.post("", response_model=ChannelPublic, status_code=201)
+async def create_new_channel(
+    channel_data: ChannelCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+)
+```
 
-- `create_tag`: タグ作成
-- `assign_tag`: タグ割り当て
-- `unassign_tag`: タグ削除
-- `list_tags`: タグ一覧取得
+**パス**: `POST /channels`
 
-### app/routers/wiki.py
+**引数**:
 
-- `create_wiki_page`: Wikiページ作成
-- `update_wiki_page`: Wikiページ更新
-- `share_wiki_page`: Wiki権限設定
-- `unshare_wiki_page`: Wiki権限削除
+| 引数 | 型 | 説明 |
+|-----|-----|------|
+| channel_data | ChannelCreate | チャンネル作成情報（Pydantic） |
+| current_user | User | 認証済みユーザー（依存性注入） |
+| db | Session | データベースセッション（依存性注入） |
 
-### app/routers/search.py
+**レスポンス**:
+- `ChannelPublic` (201 Created): 作成されたチャンネル情報
 
-- `search_all`: 横断検索（ユーザー、メッセージ、Wiki、ファイル）
+**エラー**:
+- `400 Bad Request`: チャンネル名が既に存在
+- `401 Unauthorized`: トークンが無効
+- `422 Unprocessable Entity`: バリデーションエラー
+
+---
+
+### get_all_channels エンドポイント
+
+**説明**: チャンネル一覧を取得する。
+
+**シグネチャ**:
+```python
+@router.get("", response_model=List[ChannelPublic])
+async def get_all_channels(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+)
+```
+
+**パス**: `GET /channels`
+
+**レスポンス**:
+- `List[ChannelPublic]` (200 OK): チャンネル一覧
+
+---
+
+### get_channel エンドポイント
+
+**説明**: 特定のチャンネル情報を取得する。
+
+**シグネチャ**:
+```python
+@router.get("/{channel_id}", response_model=ChannelPublic)
+async def get_channel(
+    channel_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+)
+```
+
+**パス**: `GET /channels/{channel_id}`
+
+**エラー**:
+- `404 Not Found`: チャンネルが存在しない
+
+---
+
+### get_channel_message_history エンドポイント
+
+**説明**: チャンネルのメッセージ履歴を取得する。
+
+**シグネチャ**:
+```python
+@router.get("/{channel_id}/messages", response_model=List[MessageWithSender])
+async def get_channel_message_history(
+    channel_id: int,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+)
+```
+
+**パス**: `GET /channels/{channel_id}/messages`
+
+**クエリパラメータ**:
+
+| パラメータ | 型 | デフォルト | 説明 |
+|-----------|-----|-----------|------|
+| limit | int | 100 | 取得件数（1-500） |
+| offset | int | 0 | スキップ件数 |
+
+**レスポンス**:
+- `List[MessageWithSender]` (200 OK): メッセージ履歴（送信者情報含む）
+
+**特徴**:
+- N+1問題回避のためJOINクエリを使用
+- 送信者のusernameを含む
+
+---
+
+## app/routers/dm.py (Phase 4実装済み)
+
+ダイレクトメッセージAPIエンドポイント。
+
+### send_dm エンドポイント
+
+**説明**: DMを送信する。
+
+**シグネチャ**:
+```python
+@router.post("", response_model=MessagePublic, status_code=201)
+async def send_dm(
+    dm_data: DMCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+)
+```
+
+**パス**: `POST /messages/dm`
+
+**引数**:
+
+| 引数 | 型 | 説明 |
+|-----|-----|------|
+| dm_data | DMCreate | DM送信情報（receiver_id, content） |
+| current_user | User | 認証済みユーザー（依存性注入） |
+| db | Session | データベースセッション（依存性注入） |
+
+**レスポンス**:
+- `MessagePublic` (201 Created): 送信されたDM情報
+
+**エラー**:
+- `400 Bad Request`: 自分自身にDMを送信しようとした
+- `404 Not Found`: 受信者が存在しない
+- `401 Unauthorized`: トークンが無効
+
+---
+
+### get_dm_history エンドポイント
+
+**説明**: 特定ユーザーとのDM履歴を取得する。
+
+**シグネチャ**:
+```python
+@router.get("/{user_id}", response_model=List[MessagePublic])
+async def get_dm_history(
+    user_id: uuid.UUID,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+)
+```
+
+**パス**: `GET /messages/dm/{user_id}`
+
+**パスパラメータ**:
+
+| パラメータ | 型 | 説明 |
+|-----------|-----|------|
+| user_id | uuid.UUID | 相手のユーザーID |
+
+**クエリパラメータ**:
+
+| パラメータ | 型 | デフォルト | 説明 |
+|-----------|-----|-----------|------|
+| limit | int | 100 | 取得件数（1-500） |
+| offset | int | 0 | スキップ件数 |
+
+**レスポンス**:
+- `List[MessagePublic]` (200 OK): DM履歴（双方向）
+
+**特徴**:
+- 送信・受信の両方向のDMを取得
+- 新しい順にソート
+
+---
+
+### get_dm_conversations エンドポイント
+
+**説明**: DMの会話一覧を取得する。
+
+**シグネチャ**:
+```python
+@router.get("/conversations", response_model=List[DMConversation])
+async def get_dm_conversations(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+)
+```
+
+**パス**: `GET /messages/dm/conversations`
+
+**レスポンス**:
+- `List[DMConversation]` (200 OK): 会話一覧（相手ユーザーと最新メッセージ）
+
+**特徴**:
+- 現在のユーザーがDMをやり取りしたユーザーの一覧
+- 各会話の最新メッセージを含む（Phase 4拡張機能）

@@ -251,3 +251,147 @@ export async function search(
   });
   return response.data;
 }
+
+// ====================
+// Channel関連の型定義
+// ====================
+
+export interface ChannelCreate {
+  name: string;
+  description?: string;
+  is_private?: boolean;
+}
+
+export interface ChannelPublic {
+  id: number;
+  name: string;
+  description?: string;
+  is_private: boolean;
+}
+
+export interface ChannelDetail extends ChannelPublic {
+  members?: UserInfo[];
+}
+
+export interface Message {
+  id: number;
+  sender_id: string;
+  sender_username: string;
+  content: string;
+  channel_id?: number;
+  receiver_id?: string;
+  created_at: string;
+}
+
+export interface MessageCreate {
+  content: string;
+}
+
+export interface MemberAdd {
+  user_id: string;
+}
+
+// ====================
+// Channel API関数
+// ====================
+
+// チャンネル一覧取得 (GET /channels)
+export async function getChannels(): Promise<ChannelPublic[]> {
+  const response = await apiClient.get<ChannelPublic[]>('/channels');
+  return response.data;
+}
+
+// チャンネル作成 (POST /channels)
+export async function createChannel(data: ChannelCreate): Promise<ChannelPublic> {
+  const response = await apiClient.post<ChannelPublic>('/channels', data);
+  return response.data;
+}
+
+// チャンネル詳細取得 (GET /channels/:channel_id)
+// Note: Worker2実装にはchannelDetail APIがないため、getChannelsから取得
+export async function getChannel(channelId: number): Promise<ChannelDetail> {
+  const channels = await getChannels();
+  const channel = channels.find(c => c.id === channelId);
+  if (!channel) {
+    throw new Error(`Channel with id ${channelId} not found`);
+  }
+  return channel;
+}
+
+// チャンネルメッセージ一覧取得 (GET /channels/:channel_id/messages)
+export async function getChannelMessages(
+  channelId: number,
+  limit: number = 100,
+  offset: number = 0
+): Promise<Message[]> {
+  const response = await apiClient.get<Message[]>(`/channels/${channelId}/messages`, {
+    params: { limit, offset }
+  });
+  return response.data;
+}
+
+// チャンネルメッセージ送信 (POST /channels/:channel_id/messages)
+export async function sendChannelMessage(
+  channelId: number,
+  data: MessageCreate
+): Promise<Message> {
+  const response = await apiClient.post<Message>(`/channels/${channelId}/messages`, data);
+  return response.data;
+}
+
+// チャンネルメンバー追加 (POST /channels/:channel_id/members)
+// Note: Worker2実装にはmembers APIがないため、Phase 5実装予定
+export async function addChannelMember(
+  channelId: number,
+  userId: string
+): Promise<{ success: boolean }> {
+  const response = await apiClient.post<{ success: boolean }>(
+    `/channels/${channelId}/members`,
+    { user_id: userId }
+  );
+  return response.data;
+}
+
+// ====================
+// DM関連の型定義
+// ====================
+
+export interface DMConversation {
+  partner_id: string;
+  partner_username: string;
+  last_message?: string;
+  last_message_at?: string;
+}
+
+export interface DMMessageCreate {
+  receiver_id: string;
+  content: string;
+}
+
+// ====================
+// DM API関数
+// ====================
+
+// DM会話一覧取得 (GET /messages/dm)
+export async function getDMConversations(): Promise<DMConversation[]> {
+  const response = await apiClient.get<DMConversation[]>('/messages/dm');
+  return response.data;
+}
+
+// 特定ユーザーとのDM履歴取得 (GET /messages/dm/{user_id})
+export async function getDMMessages(
+  userId: string,
+  limit: number = 50,
+  offset: number = 0
+): Promise<Message[]> {
+  const response = await apiClient.get<Message[]>(`/messages/dm/${userId}`, {
+    params: { limit, offset }
+  });
+  return response.data;
+}
+
+// DMメッセージ送信 (POST /messages/dm)
+export async function sendDMMessage(data: DMMessageCreate): Promise<Message> {
+  const response = await apiClient.post<Message>('/messages/dm', data);
+  return response.data;
+}

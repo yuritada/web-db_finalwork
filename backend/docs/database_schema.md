@@ -421,22 +421,98 @@ Enable `pg_stat_statements` extension and monitor query performance.
 
 ---
 
+## Phase 4: Channels and Direct Messages
+
+### Channels Table
+
+**Table Name**: `channels`
+
+Real-time communication channels for group messaging.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | INTEGER | PRIMARY KEY | Channel ID |
+| name | VARCHAR(100) | UNIQUE, NOT NULL | Channel name |
+| description | VARCHAR(500) | NULLABLE | Channel description |
+| is_private | BOOLEAN | DEFAULT FALSE, NOT NULL | Private/Public flag |
+
+**Indexes**:
+- PRIMARY KEY on `id`
+- UNIQUE INDEX on `name`
+
+**Relationships**:
+- One-to-Many with `messages`
+
+**Business Logic**:
+- All users can create channels
+- Channel names must be unique across the system
+- Private channels are reserved for future implementation
+
+---
+
+### Messages Table
+
+**Table Name**: `messages`
+
+Unified message storage for both channel messages and direct messages.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | INTEGER | PRIMARY KEY | Message ID |
+| content | TEXT | NOT NULL | Message content |
+| sender_id | UUID | FOREIGN KEY, NOT NULL | Sender user ID |
+| channel_id | INTEGER | FOREIGN KEY, NULLABLE | Channel ID (for channel messages) |
+| receiver_id | UUID | FOREIGN KEY, NULLABLE | Receiver user ID (for DMs) |
+| created_at | TIMESTAMP | DEFAULT NOW() | Message creation timestamp |
+
+**Indexes**:
+- PRIMARY KEY on `id`
+- INDEX on `sender_id`
+- INDEX on `channel_id`
+- INDEX on `receiver_id`
+- INDEX on `created_at`
+
+**Relationships**:
+- Many-to-One with `users` (sender)
+- Many-to-One with `channels` (for channel messages)
+- Many-to-One with `users` (receiver, for DMs)
+- One-to-Many with `files` (for attachments)
+
+**Cascade Rules**:
+- ON DELETE CASCADE: When sender is deleted, messages are deleted
+- ON DELETE CASCADE: When channel is deleted, channel messages are deleted
+- ON DELETE CASCADE: When receiver is deleted, DMs are deleted
+
+**Message Type Determination**:
+```sql
+-- Channel Message: channel_id IS NOT NULL AND receiver_id IS NULL
+-- Direct Message: channel_id IS NULL AND receiver_id IS NOT NULL
+```
+
+**Business Logic**:
+- Messages are sorted by `created_at DESC` (newest first)
+- DM history includes bidirectional messages between two users
+- Channel messages are visible to all users (Phase 4 implementation)
+- Message persistence enables offline access via REST API
+
+---
+
 ## Future Enhancements
 
-### Phase 4: Channels and Direct Messages
+### Phase 5: Advanced Features
 
 Planned additions:
-- `channels` table
-- `channel_members` table
-- `messages` table
-- `direct_messages` table
+- `channel_members` table (many-to-many for channel membership)
+- `typing_indicators` table (real-time typing status)
+- `message_reactions` table (emoji reactions)
+- `message_threads` table (threaded conversations)
 
 ### Potential Optimizations
 
-1. **Partitioning**: Consider partitioning `messages` table by date
-2. **Materialized Views**: Create materialized views for complex queries
+1. **Partitioning**: Consider partitioning `messages` table by date for performance
+2. **Materialized Views**: Create materialized views for message statistics
 3. **Read Replicas**: Implement read replicas for scalability
-4. **Caching**: Add Redis for frequently accessed data
+4. **Caching**: Add Redis for frequently accessed data (channel lists, recent messages)
 
 ---
 

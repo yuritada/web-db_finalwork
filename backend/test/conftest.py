@@ -17,6 +17,8 @@ from app.models.base import Base
 from app.models.user import User, UserKategori
 from app.models.wiki import WikiPage
 from app.models.tag import Tag
+from app.models.channel import Channel
+from app.models.message import Message
 
 
 # Test database setup
@@ -185,3 +187,76 @@ def authenticated_client(client, test_user):
     }
 
     return client
+
+
+# ===== Phase 4: Channels & DM Fixtures =====
+
+@pytest.fixture(scope="function")
+def test_channel(db):
+    """Test channel fixture (公開チャンネル)"""
+    channel = Channel(
+        name="Test Channel",
+        description="Test channel for pytest",
+        is_private=False
+    )
+    db.add(channel)
+    db.commit()
+    db.refresh(channel)
+    return channel
+
+
+@pytest.fixture(scope="function")
+def private_channel(db):
+    """Private channel fixture (プライベートチャンネル)"""
+    channel = Channel(
+        name="Private Channel",
+        description="Private test channel",
+        is_private=True
+    )
+    db.add(channel)
+    db.commit()
+    db.refresh(channel)
+    return channel
+
+
+@pytest.fixture(scope="function")
+def test_channel_message(db, test_user, test_channel):
+    """Test channel message fixture (チャンネルメッセージ)"""
+    message = Message(
+        content="Test channel message",
+        sender_id=test_user.id,
+        channel_id=test_channel.id
+    )
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+    return message
+
+
+@pytest.fixture(scope="function")
+def test_dm(db, test_user, other_user):
+    """Test DM fixture (ダイレクトメッセージ)"""
+    message = Message(
+        content="Test DM message",
+        sender_id=test_user.id,
+        receiver_id=other_user.id
+    )
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+    return message
+
+
+@pytest.fixture(scope="function")
+def get_token(client):
+    """Helper fixture to get authentication token for any user"""
+    def _get_token(user):
+        response = client.post(
+            "/auth/token",
+            data={
+                "username": user.username,
+                "password": user.plain_password
+            }
+        )
+        return response.json()["access_token"]
+    return _get_token

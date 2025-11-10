@@ -8,9 +8,12 @@ import uuid
 from app.models.user import User, UserKategori
 from app.models.wiki import WikiPage, WikiPagePermission, PermissionLevel
 from app.models.tag import Tag, UserTag
+from app.models.channel import Channel
+from app.models.message import Message
 from app.schemas.user import UserCreate
 from app.schemas.wiki import WikiPageCreate
 from app.schemas.tag import TagCreate
+from app.schemas.channel import ChannelCreate, MessageCreate, DMCreate
 
 
 def hash_password(password: str) -> str:
@@ -186,3 +189,96 @@ def assign_tag_to_user(
     db.refresh(new_assignment)
 
     return new_assignment
+
+
+# Channel関連の作成操作
+
+def create_channel(db: Session, channel_data: ChannelCreate) -> Channel:
+    """
+    チャンネルを作成する
+
+    Args:
+        db: データベースセッション
+        channel_data: チャンネル作成データ
+
+    Returns:
+        作成されたChannelオブジェクト
+
+    Raises:
+        IntegrityError: チャンネル名が既に存在する場合
+    """
+    db_channel = Channel(
+        name=channel_data.name,
+        description=channel_data.description,
+        is_private=channel_data.is_private
+    )
+
+    db.add(db_channel)
+    db.commit()
+    db.refresh(db_channel)
+
+    return db_channel
+
+
+# Message関連の作成操作
+
+def create_channel_message(
+    db: Session,
+    channel_id: int,
+    message_data: MessageCreate,
+    sender_id: uuid.UUID
+) -> Message:
+    """
+    チャンネルメッセージを作成する
+
+    Args:
+        db: データベースセッション
+        channel_id: チャンネルID
+        message_data: メッセージ作成データ
+        sender_id: 送信者のユーザーID
+
+    Returns:
+        作成されたMessageオブジェクト
+    """
+    db_message = Message(
+        content=message_data.content,
+        sender_id=sender_id,
+        channel_id=channel_id,
+        receiver_id=None  # チャンネルメッセージはNULL
+    )
+
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+
+    return db_message
+
+
+def create_dm_message(
+    db: Session,
+    dm_data: DMCreate,
+    sender_id: uuid.UUID
+) -> Message:
+    """
+    DMを作成する
+
+    Args:
+        db: データベースセッション
+        dm_data: DM作成データ
+        sender_id: 送信者のユーザーID
+
+    Returns:
+        作成されたMessageオブジェクト
+    """
+    db_message = Message(
+        content=dm_data.content,
+        sender_id=sender_id,
+        channel_id=None,  # DMはNULL
+        receiver_id=dm_data.receiver_id
+    )
+
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+
+    return db_message

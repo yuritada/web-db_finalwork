@@ -14,3 +14,9 @@ class TokenRequest(BaseModel):
     client_secret: str | None = Field(None, description="OAuth2 client secret")
 
     model_config = {"extra": "allow"}
+
+
+class LoginRequest(BaseModel):
+    """JSON形式のログインリクエスト（フロントエンド互換）"""
+    username: str = Field(..., description="ユーザー名")
+    password: str = Field(..., description="パスワード")

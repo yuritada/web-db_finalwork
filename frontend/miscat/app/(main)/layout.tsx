@@ -104,18 +104,24 @@ export default function MainLayout({
                   >
                     Wiki
                   </a>
-                  <div className="px-3 py-2 text-sm text-gray-400 cursor-not-allowed">
-                    チャンネル（準備中）
-                  </div>
+                  <a
+                    href="/main/channels"
+                    className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    チャンネル
+                  </a>
                   <a
                     href="/main/tags"
                     className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
                   >
                     タグ
                   </a>
-                  <div className="px-3 py-2 text-sm text-gray-400 cursor-not-allowed">
-                    DM（準備中）
-                  </div>
+                  <a
+                    href="/main/dm"
+                    className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    DM
+                  </a>
                 </div>
               </div>
             </nav>

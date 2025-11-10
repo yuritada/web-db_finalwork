@@ -14,6 +14,7 @@ from app.db.create import create_user
 from app.db.read import get_user_by_username, get_user_by_email
 from app.schemas.user import UserCreate, UserPublic
 from app.schemas.token import Token
+from app.schemas.auth import LoginRequest
 from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -112,7 +113,60 @@ def login(
     # アクセストークン生成
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username},
+        data={"sub": str(user.id)},  # CRITICAL FIX: user.id を使用（get_current_userと一貫性）
+        expires_delta=access_token_expires
+    )
+
+    return Token(access_token=access_token, token_type="bearer")
+
+
+@router.post("/login", response_model=Token)
+async def login_json(
+    credentials: LoginRequest,
+    db: Session = Depends(get_session)
+):
+    """
+    JSON形式のログインエンドポイント（フロントエンド互換）
+
+    CRITICAL FIX: フロントエンドとの互換性のため、JSON形式を受け付ける
+
+    既存の /auth/token エンドポイント（OAuth2準拠）との違い:
+    - リクエスト形式: JSON (application/json)
+    - OAuth2準拠: /auth/token は OAuth2PasswordRequestForm (application/x-www-form-urlencoded)
+
+    Args:
+        credentials: ログイン認証情報（JSON形式）
+            - username: ユーザー名
+            - password: パスワード
+        db: データベースセッション
+
+    Returns:
+        Token: JWTアクセストークン
+
+    Raises:
+        401: 認証失敗（ユーザー名またはパスワードが間違っている）
+    """
+    # ユーザー認証
+    user = get_user_by_username(db, credentials.username)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # パスワード検証
+    if not verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # アクセストークン生成
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)},  # user.idを使用（get_current_userと一貫性）
         expires_delta=access_token_expires
     )
 
