@@ -2,19 +2,23 @@
 CREATE operations (v3)
 """
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
+import bcrypt
 import uuid
 
 from app.models.user import User, UserKategori
+from app.models.wiki import WikiPage, WikiPagePermission, PermissionLevel
+from app.models.tag import Tag, UserTag
 from app.schemas.user import UserCreate
-
-# パスワードハッシュ化コンテキスト
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.schemas.wiki import WikiPageCreate
+from app.schemas.tag import TagCreate
 
 
 def hash_password(password: str) -> str:
-    """パスワードをハッシュ化する"""
-    return pwd_context.hash(password)
+    """パスワードをハッシュ化する（bcrypt直接使用）"""
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def create_user(db: Session, user_data: UserCreate) -> User:
@@ -50,3 +54,135 @@ def create_user(db: Session, user_data: UserCreate) -> User:
     db.refresh(db_user)
 
     return db_user
+
+
+# Wiki関連の作成操作
+
+def create_wiki_page(
+    db: Session,
+    page_data: WikiPageCreate,
+    creator_id: uuid.UUID
+) -> WikiPage:
+    """
+    Wikiページを作成する（v3ロジック）
+
+    【v3仕様】
+    - ページ作成時、作成者に自動的にEDIT権限を付与
+    """
+    # WikiPageモデルのインスタンスを作成
+    db_page = WikiPage(
+        title=page_data.title,
+        content=page_data.content,
+        creator_id=creator_id
+    )
+
+    db.add(db_page)
+    db.flush()  # IDを取得するためflush
+
+    # 作成者にEDIT権限を自動付与
+    creator_permission = WikiPagePermission(
+        page_id=db_page.id,
+        user_id=creator_id,
+        permission_level=PermissionLevel.EDIT
+    )
+
+    db.add(creator_permission)
+    db.commit()
+    db.refresh(db_page)
+
+    return db_page
+
+
+def share_wiki_page(
+    db: Session,
+    page_id: int,
+    user_id: uuid.UUID,
+    permission_level: PermissionLevel
+) -> WikiPagePermission:
+    """
+    Wikiページの権限を追加または更新する
+
+    既存の権限がある場合は更新、ない場合は新規作成
+    """
+    # 既存の権限を確認
+    existing_permission = db.query(WikiPagePermission).filter(
+        WikiPagePermission.page_id == page_id,
+        WikiPagePermission.user_id == user_id
+    ).first()
+
+    if existing_permission:
+        # 既存の権限を更新
+        existing_permission.permission_level = permission_level
+        db.commit()
+        db.refresh(existing_permission)
+        return existing_permission
+    else:
+        # 新規権限を作成
+        new_permission = WikiPagePermission(
+            page_id=page_id,
+            user_id=user_id,
+            permission_level=permission_level
+        )
+        db.add(new_permission)
+        db.commit()
+        db.refresh(new_permission)
+        return new_permission
+
+
+# Tag関連の作成操作
+
+def create_tag(
+    db: Session,
+    tag_data: TagCreate,
+    creator_id: uuid.UUID
+) -> Tag:
+    """
+    タグを作成する（v3ロジック）
+
+    【v3仕様】
+    - タグ作成時、creator_idを記録
+    """
+    # Tagモデルのインスタンスを作成
+    db_tag = Tag(
+        name=tag_data.name,
+        creator_id=creator_id
+    )
+
+    db.add(db_tag)
+    db.commit()
+    db.refresh(db_tag)
+
+    return db_tag
+
+
+def assign_tag_to_user(
+    db: Session,
+    tag_id: int,
+    user_id: uuid.UUID
+) -> UserTag:
+    """
+    ユーザーにタグを割り当てる
+
+    既存の割り当てがある場合は何もしない（冪等性）
+    """
+    # 既存の割り当てを確認
+    existing_assignment = db.query(UserTag).filter(
+        UserTag.tag_id == tag_id,
+        UserTag.user_id == user_id
+    ).first()
+
+    if existing_assignment:
+        # 既に割り当て済みの場合はそのまま返す
+        return existing_assignment
+
+    # 新規割り当てを作成
+    new_assignment = UserTag(
+        tag_id=tag_id,
+        user_id=user_id
+    )
+
+    db.add(new_assignment)
+    db.commit()
+    db.refresh(new_assignment)
+
+    return new_assignment

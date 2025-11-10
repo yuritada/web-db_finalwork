@@ -136,6 +136,59 @@ docker exec finalwork-db-1 psql -U fastapi_user -d commu_db -c "\dt"
  public | wiki_pages            | table | fastapi_user
 ```
 
+### 6. テストユーザー投入（オプション）
+
+開発・テスト用のユーザーを投入します。
+
+```bash
+# テストユーザー投入スクリプトを実行
+docker exec finalwork-backend-1 python scripts/seed_users.py
+```
+
+**作成されるユーザー**:
+
+| ユーザー名 | Email | パスワード | カテゴリ | 学籍番号 |
+|-----------|-------|-----------|---------|---------|
+| student_test | student@example.com | testpass123 | 学生 | 2024001 |
+| professor_test | professor@example.com | testpass123 | 教授 | 自動生成 (staff_xxxxxxxx) |
+| staff_test | staff@example.com | testpass123 | 事務 | 自動生成 (staff_xxxxxxxx) |
+
+**成功時の出力例**:
+
+```
+============================================================
+テストユーザー投入スクリプト
+============================================================
+
+✅ ユーザー作成成功: student_test (学生)
+   - Email: student@example.com
+   - 学籍番号: 2024001
+   - ID: bdeac751-8c11-49a8-b9d6-4ff330106c59
+
+✅ ユーザー作成成功: professor_test (教授)
+   - Email: professor@example.com
+   - 学籍番号: staff_6d2be245
+   - ID: dc0bcf4c-faa2-453e-a5e9-8b132f7b2fed
+
+✅ ユーザー作成成功: staff_test (事務)
+   - Email: staff@example.com
+   - 学籍番号: staff_df8f48c8
+   - ID: 578360c0-e875-4508-9ff2-b704e23898f5
+
+============================================================
+✅ 完了: 3/3 ユーザーを作成しました
+============================================================
+```
+
+**ログインテスト**:
+
+Swagger UI (http://localhost:8000/docs) で以下のユーザーでログインできます:
+- `student@example.com` / `testpass123`
+- `professor@example.com` / `testpass123`
+- `staff@example.com` / `testpass123`
+
+> **注意**: このスクリプトは開発・テスト環境でのみ使用してください。本番環境では使用しないでください。
+
 ---
 
 ## 動作確認

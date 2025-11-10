@@ -4,8 +4,11 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://backend:8000';
 
 export async function POST(request: NextRequest) {
   try {
-    // リクエストボディから username, password を取得
-    const { username, password } = await request.json();
+    // リクエストボディから username, password を取得 (form-urlencoded形式)
+    const body = await request.text();
+    const params = new URLSearchParams(body);
+    const username = params.get('username');
+    const password = params.get('password');
 
     if (!username || !password) {
       return NextResponse.json(

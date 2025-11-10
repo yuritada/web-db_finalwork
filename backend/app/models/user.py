@@ -70,7 +70,8 @@ class User(Base):
 
     messages: Mapped[List["Message"]] = relationship(
         "Message",
-        back_populates="sender"
+        back_populates="sender",
+        foreign_keys="Message.sender_id"
     )
 
     def __repr__(self) -> str:

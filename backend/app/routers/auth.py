@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from jose import jwt
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
+import bcrypt
 
 from app.db.connect import get_session
 from app.db.create import create_user
@@ -18,13 +18,12 @@ from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# パスワードハッシュ化コンテキスト
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """パスワードを検証する"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """パスワードを検証する（bcrypt直接使用）"""
+    password_bytes = plain_password.encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
