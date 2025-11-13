@@ -90,8 +90,8 @@ export default function SignupPage() {
         faculty: faculty || undefined,
       });
 
-      // サインアップ成功後、メインページへリダイレクト
-      router.push('/main');
+      // サインアップ成功後、トップページへリダイレクト（認証済みなら /dashboard へ自動遷移）
+      router.push('/');
     } catch (err: unknown) {
       // エラーハンドリング
       if (err instanceof Error) {

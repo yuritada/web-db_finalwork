@@ -82,13 +82,13 @@ export default function MainLayout({
                 メニュー
               </div>
               <a
-                href="/main"
+                href="/dashboard"
                 className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 ダッシュボード
               </a>
               <a
-                href="/main/search"
+                href="/search"
                 className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 検索
@@ -99,25 +99,25 @@ export default function MainLayout({
                 </div>
                 <div className="space-y-2">
                   <a
-                    href="/main/wiki"
+                    href="/wiki"
                     className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
                   >
                     Wiki
                   </a>
                   <a
-                    href="/main/channels"
+                    href="/channels"
                     className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
                   >
                     チャンネル
                   </a>
                   <a
-                    href="/main/tags"
+                    href="/tags"
                     className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
                   >
                     タグ
                   </a>
                   <a
-                    href="/main/dm"
+                    href="/dm"
                     className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
                   >
                     DM

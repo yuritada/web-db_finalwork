@@ -55,7 +55,7 @@ TEST_ACCOUNTS = [
         "faculty": "情報学部"
     },
     {
-        "username": "多田有里",
+        "username": "s2422110",
         "email": "s2422110@stu.musashino-u.ac.jp",
         "password": "test1234",
         "kategori": UserKategori.STUDENT,
