@@ -75,7 +75,7 @@ export default function DMPage() {
             <DMCard
               key={dm.partner_id}
               dm={dm}
-              onClick={() => router.push(`/main/dm/${dm.partner_id}`)}
+              onClick={() => router.push(`/dm/${dm.partner_id}`)}
             />
           ))}
         </div>

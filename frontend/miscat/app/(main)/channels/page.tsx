@@ -164,7 +164,7 @@ export default function ChannelsPage() {
             <ChannelCard
               key={channel.id}
               channel={channel}
-              onClick={() => router.push(`/main/channels/${channel.id}`)}
+              onClick={() => router.push(`/channels/${channel.id}`)}
             />
           ))}
         </div>

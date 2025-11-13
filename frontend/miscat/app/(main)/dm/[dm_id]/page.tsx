@@ -84,7 +84,7 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
     <div className="space-y-4">
       {/* パンくず */}
       <div className="text-sm text-gray-600">
-        <button onClick={() => router.push('/main/dm')} className="hover:underline">
+        <button onClick={() => router.push('/dm')} className="hover:underline">
           DM
         </button>
         <span className="mx-2">/</span>

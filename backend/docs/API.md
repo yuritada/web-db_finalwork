@@ -1,8 +1,8 @@
 # Miscat API仕様書
 
 **最終更新**: 2025-11-14
-**管理者**: worker1 (フロントエンド担当)
-**バージョン**: 1.0
+**管理者**: worker3 (ドキュメント・インフラ担当)
+**バージョン**: 1.1
 
 
 ---
@@ -150,15 +150,53 @@
 
 ### Medium（改善が望ましい）
 
-#### 2. Wiki共有解除API
+<del>
+
+#### 2. Wiki共有解除API ✅ **実装済み**
 
 - **エンドポイント**: `DELETE /wiki/pages/{page_id}/share/{user_id}`
-- **ステータス**: 未実装
+- **メソッド**: DELETE
+- **認証**: 必須（Bearer Token）
+- **ステータス**: ✅ 実装完了
+- **説明**: Wikiページの共有権限を取り消します。ページ作成者のみ実行可能です。
+- **実装ファイル**: `backend/app/routers/wiki.py:183-242`
 
-#### 3. タグ割り当て解除API
+**パスパラメータ**:
+| パラメータ | 型 | 説明 |
+|-----------|-----|------|
+| page_id | integer | WikiページID |
+| user_id | string (UUID) | 権限を取り消すユーザーID |
+
+**レスポンス**:
+- **成功時（200 OK）**: `{"success": true}`
+- **エラー時**:
+  - 400: 無効なユーザーID形式
+  - 403: 権限がない（作成者のみ）
+  - 404: ページまたは権限が存在しない
+
+#### 3. タグ割り当て解除API ✅ **実装済み**
 
 - **エンドポイント**: `DELETE /tags/{tag_id}/assign/{user_id}`
-- **ステータス**: 未実装
+- **メソッド**: DELETE
+- **認証**: 必須（Bearer Token）
+- **ステータス**: ✅ 実装完了
+- **説明**: ユーザーに割り当てられたタグを解除します。タグ作成者のみ実行可能です。
+- **実装ファイル**: `backend/app/routers/tags.py:172-231`
+
+**パスパラメータ**:
+| パラメータ | 型 | 説明 |
+|-----------|-----|------|
+| tag_id | integer | タグID |
+| user_id | string (UUID) | タグを解除するユーザーID |
+
+**レスポンス**:
+- **成功時（200 OK）**: `{"success": true}`
+- **エラー時**:
+  - 400: 無効なユーザーID形式
+  - 403: 権限がない（タグ作成者のみ）
+  - 404: タグまたは割り当てが存在しない
+
+</del>
 
 ---
 
@@ -759,6 +797,40 @@ WebSocket APIは、チャンネルのリアルタイム通信機能を提供し�
 ---
 
 ## 変更履歴
+
+### 2025-11-14 (v1.2) ✅ **最新版**
+
+#### 実装完了
+
+- ✅ DELETE /wiki/pages/{page_id}/share/{user_id} - Wiki共有解除API（backend/app/routers/wiki.py:183-242）
+- ✅ DELETE /tags/{tag_id}/assign/{user_id} - タグ割り当て解除API（backend/app/routers/tags.py:172-231）
+
+#### 追加
+
+- 統合テストに新規テストケースを追加：
+  - test_wiki_share() - Wiki共有テスト
+  - test_wiki_unshare() - Wiki共有解除テスト
+  - test_tag_assign() - タグ割り当てテスト
+  - test_tag_unassign() - タグ割り当て解除テスト
+
+#### 変更
+
+- 未実装API一覧から実装済みAPIを移動（Wiki共有解除、タグ割り当て解除）
+- API仕様書のステータスを「実装待ち」→「✅ 実装完了」に更新
+
+### 2025-11-14 (v1.1)
+
+#### 追加
+
+- 未実装APIの詳細仕様を追加：
+  - DELETE /wiki/pages/{page_id}/share/{user_id} - Wiki共有解除API
+  - DELETE /tags/{tag_id}/assign/{user_id} - タグ割り当て解除API
+- デプロイメントガイド作成（docs/DEPLOYMENT.md）
+- 統合テストスクリプト完全版作成（backend/tests/integration_test_full.py）
+
+#### 変更
+
+- 未実装API一覧を詳細化（パラメータ、レスポンス、エラーケースを追記）
 
 ### 2025-11-14 (v1.0)
 

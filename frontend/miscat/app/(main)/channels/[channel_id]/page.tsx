@@ -43,7 +43,7 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
         toast.error('データの読み込みに失敗しました');
       }
       // エラー時は一覧に戻る
-      router.push('/main/channels');
+      router.push('/channels');
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +93,7 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
     <div className="space-y-4">
       {/* パンくず */}
       <div className="text-sm text-gray-600">
-        <button onClick={() => router.push('/main/channels')} className="hover:underline">
+        <button onClick={() => router.push('/channels')} className="hover:underline">
           チャンネル
         </button>
         <span className="mx-2">/</span>

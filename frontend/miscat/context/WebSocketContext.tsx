@@ -26,8 +26,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
 
   const connect = () => {
     try {
-      // WebSocket接続先（開発環境）
-      // TODO: 本番環境では環境変数から取得
+      // WebSocket接続先（環境変数から取得、デフォルトはlocalhost）
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws';
 
       const ws = new WebSocket(wsUrl);

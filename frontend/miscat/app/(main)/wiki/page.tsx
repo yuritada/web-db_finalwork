@@ -69,7 +69,7 @@ export default function WikiListPage() {
       setNewContent('');
 
       // 詳細ページへ遷移
-      router.push(`/main/wiki/${newPage.id}`);
+      router.push(`/wiki/${newPage.id}`);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setCreateError(err.message || 'ページの作成に失敗しました');
@@ -211,7 +211,7 @@ export default function WikiListPage() {
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {pages.map((page) => (
-                <Link key={page.id} href={`/main/wiki/${page.id}`}>
+                <Link key={page.id} href={`/wiki/${page.id}`}>
                   <Card className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardHeader>
                       <CardTitle className="text-lg">{page.title}</CardTitle>

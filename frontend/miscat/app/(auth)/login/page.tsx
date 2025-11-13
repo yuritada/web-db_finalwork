@@ -30,8 +30,8 @@ export default function LoginPage() {
       // ログイン実行
       await login(username, password);
 
-      // ログイン成功後、ホームページへリダイレクト
-      router.push('/');
+      // ログイン成功後、ダッシュボードへリダイレクト
+      router.push('/dashboard');
     } catch (err: unknown) {
       // エラーハンドリング
       if (err instanceof Error) {

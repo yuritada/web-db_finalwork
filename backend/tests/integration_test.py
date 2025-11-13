@@ -38,6 +38,8 @@ class IntegrationTestRunner:
         self.access_token: Optional[str] = None
         self.test_user_id: Optional[str] = None
         self.test_username: str = f"test_user_{uuid.uuid4().hex[:8]}"
+        self.wiki_page_id: Optional[int] = None
+        self.tag_id: Optional[int] = None
 
         # テスト結果カウンター
         self.passed = 0
@@ -212,6 +214,8 @@ class IntegrationTestRunner:
             if success:
                 data = response.json()
                 success = "id" in data and "title" in data
+                if success:
+                    self.wiki_page_id = data["id"]
 
             self.assert_test(
                 "Wiki Page Create",
@@ -267,6 +271,8 @@ class IntegrationTestRunner:
             if success:
                 data = response.json()
                 success = "id" in data and "name" in data
+                if success:
+                    self.tag_id = data["id"]
 
             self.assert_test(
                 "Tag Create",
@@ -275,6 +281,139 @@ class IntegrationTestRunner:
             )
         except Exception as e:
             self.assert_test("Tag Create", False, str(e))
+
+    def test_wiki_share(self):
+        """Wikiページ共有エンドポイントをテスト"""
+        if not self.access_token:
+            self.assert_test("Wiki Share", False, "No access token available")
+            return
+
+        if not self.wiki_page_id or not self.test_user_id:
+            self.assert_test("Wiki Share", False, "No wiki page or user ID available")
+            return
+
+        try:
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+            payload = {
+                "user_id": self.test_user_id,
+                "permission_level": "VIEW_ONLY"
+            }
+            response = requests.post(
+                f"{self.base_url}/wiki/pages/{self.wiki_page_id}/share",
+                headers=headers,
+                json=payload,
+                timeout=5
+            )
+
+            success = response.status_code == 201
+            if success:
+                data = response.json()
+                success = data.get("success") is True
+
+            self.assert_test(
+                "Wiki Share",
+                success,
+                f"Expected 201 with success=true, got {response.status_code}"
+            )
+        except Exception as e:
+            self.assert_test("Wiki Share", False, str(e))
+
+    def test_wiki_unshare(self):
+        """Wikiページ共有解除エンドポイントをテスト"""
+        if not self.access_token:
+            self.assert_test("Wiki Unshare", False, "No access token available")
+            return
+
+        if not self.wiki_page_id or not self.test_user_id:
+            self.assert_test("Wiki Unshare", False, "No wiki page or user ID available")
+            return
+
+        try:
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+            response = requests.delete(
+                f"{self.base_url}/wiki/pages/{self.wiki_page_id}/share/{self.test_user_id}",
+                headers=headers,
+                timeout=5
+            )
+
+            success = response.status_code == 200
+            if success:
+                data = response.json()
+                success = data.get("success") is True
+
+            self.assert_test(
+                "Wiki Unshare",
+                success,
+                f"Expected 200 with success=true, got {response.status_code}"
+            )
+        except Exception as e:
+            self.assert_test("Wiki Unshare", False, str(e))
+
+    def test_tag_assign(self):
+        """タグ割り当てエンドポイントをテスト"""
+        if not self.access_token:
+            self.assert_test("Tag Assign", False, "No access token available")
+            return
+
+        if not self.tag_id or not self.test_user_id:
+            self.assert_test("Tag Assign", False, "No tag or user ID available")
+            return
+
+        try:
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+            payload = {
+                "user_id": self.test_user_id
+            }
+            response = requests.post(
+                f"{self.base_url}/tags/{self.tag_id}/assign",
+                headers=headers,
+                json=payload,
+                timeout=5
+            )
+
+            success = response.status_code == 201
+            if success:
+                data = response.json()
+                success = data.get("success") is True
+
+            self.assert_test(
+                "Tag Assign",
+                success,
+                f"Expected 201 with success=true, got {response.status_code}"
+            )
+        except Exception as e:
+            self.assert_test("Tag Assign", False, str(e))
+
+    def test_tag_unassign(self):
+        """タグ割り当て解除エンドポイントをテスト"""
+        if not self.access_token:
+            self.assert_test("Tag Unassign", False, "No access token available")
+            return
+
+        if not self.tag_id or not self.test_user_id:
+            self.assert_test("Tag Unassign", False, "No tag or user ID available")
+            return
+
+        try:
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+            response = requests.delete(
+                f"{self.base_url}/tags/{self.tag_id}/assign/{self.test_user_id}",
+                headers=headers,
+                timeout=5
+            )
+
+            success = response.status_code == 200
+            if success:
+                data = response.json()
+                success = data.get("success") is True
+
+            self.assert_test(
+                "Tag Unassign",
+                success,
+                f"Expected 200 with success=true, got {response.status_code}"
+            )
+        except Exception as e:
+            self.assert_test("Tag Unassign", False, str(e))
 
     def test_search(self):
         """統合検索エンドポイントをテスト"""
@@ -350,11 +489,15 @@ class IntegrationTestRunner:
         self.log_info("\nWiki APIテスト...")
         self.test_wiki_list()
         self.test_wiki_create()
+        self.test_wiki_share()
+        self.test_wiki_unshare()
 
         # Tags API テスト
         self.log_info("\nTags APIテスト...")
         self.test_tags_list()
         self.test_tag_create()
+        self.test_tag_assign()
+        self.test_tag_unassign()
 
         # Search API テスト
         self.log_info("\nSearch APIテスト...")

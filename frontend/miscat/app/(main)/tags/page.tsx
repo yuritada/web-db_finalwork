@@ -237,7 +237,7 @@ export default function TagsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => router.push(`/main/tags/${tag.id}`)}
+                        onClick={() => router.push(`/tags/${tag.id}`)}
                         className="flex-1"
                       >
                         詳細

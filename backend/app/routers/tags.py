@@ -8,7 +8,7 @@ from typing import List
 from app.db.connect import get_session
 from app.db.create import create_tag, assign_tag_to_user
 from app.db.read import get_tags_for_user, get_tag_by_id, get_user_by_id
-from app.db.delete import delete_tag
+from app.db.delete import delete_tag, remove_tag_assignment
 from app.core.dependencies import (
     get_current_user,
     check_tag_assign_permission
@@ -165,6 +165,68 @@ async def assign_tag(
 
     # タグを割り当て
     assign_tag_to_user(db, tag_id, assignment_data.user_id)
+
+    return {"success": True}
+
+
+@router.delete("/{tag_id}/assign/{user_id}", status_code=status.HTTP_200_OK)
+async def unassign_tag_from_user(
+    tag_id: int,
+    user_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+):
+    """
+    タグの割り当てを解除
+
+    タグの作成者のみが実行可能
+
+    Args:
+        tag_id: タグID
+        user_id: 割り当てを解除するユーザーのID（UUID文字列）
+        current_user: 認証済みユーザー
+        db: データベースセッション
+
+    Returns:
+        dict: 成功メッセージ
+
+    Raises:
+        HTTPException: タグが存在しない場合（404）、作成者でない場合（403）、割り当てが存在しない場合（404）
+    """
+    import uuid as uuid_lib
+
+    # タグの存在確認
+    tag = get_tag_by_id(db, tag_id)
+    if not tag:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tag not found"
+        )
+
+    # 作成者チェック（タグの作成者のみが割り当て解除可能）
+    if tag.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the creator can unassign this tag"
+        )
+
+    # UUIDに変換
+    try:
+        target_user_id = uuid_lib.UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user ID format"
+        )
+
+    # 割り当てを解除
+    success = remove_tag_assignment(db, tag_id, target_user_id)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tag assignment not found for this user"
+        )
 
     return {"success": True}
 

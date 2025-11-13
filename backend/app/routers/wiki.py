@@ -9,6 +9,7 @@ from app.db.connect import get_session
 from app.db.create import create_wiki_page, share_wiki_page
 from app.db.read import get_wiki_pages_for_user, get_wiki_page_by_id
 from app.db.update import update_wiki_page
+from app.db.delete import remove_wiki_permission
 from app.core.dependencies import (
     get_current_user,
     check_wiki_view_permission,
@@ -175,5 +176,67 @@ async def share_wiki_page_with_user(
         permission_data.user_id,
         permission_data.permission_level
     )
+
+    return {"success": True}
+
+
+@router.delete("/pages/{page_id}/share/{user_id}", status_code=status.HTTP_200_OK)
+async def unshare_wiki_page_from_user(
+    page_id: int,
+    user_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+):
+    """
+    Wikiページの共有を解除（権限削除）
+
+    作成者のみが実行可能
+
+    Args:
+        page_id: WikiページID
+        user_id: 権限を削除するユーザーのID（UUID文字列）
+        current_user: 認証済みユーザー
+        db: データベースセッション
+
+    Returns:
+        dict: 成功メッセージ
+
+    Raises:
+        HTTPException: ページが存在しない場合（404）、作成者でない場合（403）、権限が存在しない場合（404）
+    """
+    import uuid as uuid_lib
+
+    # ページの存在確認
+    page = get_wiki_page_by_id(db, page_id)
+    if not page:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Wiki page not found"
+        )
+
+    # 作成者チェック（Wikiの作成者のみが共有解除可能）
+    if page.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the creator can unshare this wiki page"
+        )
+
+    # UUIDに変換
+    try:
+        target_user_id = uuid_lib.UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user ID format"
+        )
+
+    # 権限を削除
+    success = remove_wiki_permission(db, page_id, target_user_id)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Permission not found for this user"
+        )
 
     return {"success": True}

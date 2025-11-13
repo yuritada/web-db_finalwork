@@ -1,13 +1,52 @@
 import axios from 'axios';
 
-// axiosインスタンス作成 (baseURL: /api)
+// バックエンドURL（環境変数から取得、デフォルトはlocalhost:8000）
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+// トークン管理関数
+const TOKEN_KEY = 'access_token';
+
+export function setAuthToken(token: string) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(TOKEN_KEY, token);
+  }
+}
+
+export function getAuthToken(): string | null {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(TOKEN_KEY);
+  }
+  return null;
+}
+
+export function removeAuthToken() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(TOKEN_KEY);
+  }
+}
+
+// axiosインスタンス作成（バックエンド直接接続用）
 export const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // HttpOnly Cookieを使用するため
+  withCredentials: true, // CORS対応
 });
+
+// リクエストインターセプター: 認証トークンをヘッダーに追加
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = getAuthToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // レスポンス型定義
 export interface LoginResponse {
@@ -44,33 +83,45 @@ export interface SignupRequest {
 }
 
 // サインアップ関数 (POST /api/auth/signup)
+// Next.js API Routeを経由（Cookie管理のため）
 export async function signup(data: SignupRequest): Promise<User> {
-  const response = await apiClient.post<User>('/auth/signup', data);
+  const response = await axios.post<User>('/api/auth/signup', data);
   return response.data;
 }
 
 // ログイン関数 (POST /api/auth/login)
+// Next.js API Routeを経由（Cookie管理のため）
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const params = new URLSearchParams();
   params.append('username', username);
   params.append('password', password);
 
-  const response = await apiClient.post<LoginResponse>('/auth/login', params, {
+  const response = await axios.post<LoginResponse>('/api/auth/login', params, {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
   });
+
+  // トークンをlocalStorageに保存
+  if (response.data.access_token) {
+    setAuthToken(response.data.access_token);
+  }
+
   return response.data;
 }
 
 // ログアウト関数 (POST /api/auth/logout)
+// Next.js API Routeを経由（Cookie管理のため）
 export async function logout(): Promise<void> {
-  await apiClient.post('/auth/logout');
+  await axios.post('/api/auth/logout');
+  // トークンをlocalStorageから削除
+  removeAuthToken();
 }
 
 // 現在のユーザー情報取得 (GET /api/auth/me)
+// Next.js API Routeを経由（Cookie管理のため）
 export async function getMe(): Promise<User> {
-  const response = await apiClient.get<User>('/auth/me');
+  const response = await axios.get<User>('/api/auth/me');
   return response.data;
 }
 
@@ -155,6 +206,12 @@ export async function shareWikiPage(pageId: number, data: ShareWikiRequest): Pro
   return response.data;
 }
 
+// Wikiページ共有解除 (DELETE /wiki/pages/:page_id/share/:user_id)
+export async function unshareWikiPage(pageId: number, userId: string): Promise<{ success: boolean }> {
+  const response = await apiClient.delete<{ success: boolean }>(`/wiki/pages/${pageId}/share/${userId}`);
+  return response.data;
+}
+
 // ====================
 // Tag関連の型定義
 // ====================
@@ -210,6 +267,12 @@ export async function assignTag(tagId: number, userId: string): Promise<{ succes
   const response = await apiClient.post<{ success: boolean }>(`/tags/${tagId}/assign`, {
     user_id: userId,
   });
+  return response.data;
+}
+
+// ユーザーのタグ割り当て解除 (DELETE /tags/:tag_id/assign/:user_id)
+export async function unassignTag(tagId: number, userId: string): Promise<{ success: boolean }> {
+  const response = await apiClient.delete<{ success: boolean }>(`/tags/${tagId}/assign/${userId}`);
   return response.data;
 }
 

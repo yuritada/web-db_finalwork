@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { getWikiPage, updateWikiPage, WikiPageDetail, PermissionLevel } from '@/lib/api';
+import { getWikiPage, updateWikiPage, unshareWikiPage, WikiPageDetail, PermissionLevel } from '@/lib/api';
 import { ShareModal } from '@/components/wiki/ShareModal';
 import { useAuth } from '@/context/AuthContext';
 
@@ -122,6 +122,24 @@ export default function WikiDetailPage() {
     fetchPage(); // 権限リストを更新
   };
 
+  // 共有解除
+  const handleUnshare = async (userId: string) => {
+    if (!confirm(`ユーザー ${userId} との共有を解除しますか？`)) {
+      return;
+    }
+
+    try {
+      await unshareWikiPage(pageId, userId);
+      await fetchPage(); // 権限リストを更新
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        alert(`共有解除に失敗しました: ${err.message}`);
+      } else {
+        alert('共有解除に失敗しました');
+      }
+    }
+  };
+
   // 日時フォーマット
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -143,7 +161,7 @@ export default function WikiDetailPage() {
     <div className="space-y-6">
       {/* パンくず */}
       <div className="text-sm text-gray-500">
-        <Link href="/main/wiki" className="hover:text-gray-700 hover:underline">
+        <Link href="/wiki" className="hover:text-gray-700 hover:underline">
           Wiki
         </Link>
         {' / '}
@@ -303,7 +321,7 @@ export default function WikiDetailPage() {
                           {permission.user_id}
                         </p>
                       </div>
-                      <div>
+                      <div className="flex items-center gap-2">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           permission.permission_level === PermissionLevel.EDIT
                             ? 'bg-green-100 text-green-800'
@@ -311,6 +329,13 @@ export default function WikiDetailPage() {
                         }`}>
                           {getPermissionLabel(permission.permission_level)}
                         </span>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleUnshare(permission.user_id)}
+                        >
+                          解除
+                        </Button>
                       </div>
                     </div>
                   ))}

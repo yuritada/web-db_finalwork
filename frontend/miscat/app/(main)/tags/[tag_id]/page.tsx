@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getTag, assignTag, deleteTag, TagDetail } from '@/lib/api';
+import { getTag, assignTag, unassignTag, deleteTag, TagDetail } from '@/lib/api';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 
@@ -88,7 +88,7 @@ export default function TagDetailPage() {
     try {
       await deleteTag(tagId);
       toast.success('タグを削除しました');
-      router.push('/main/tags');
+      router.push('/tags');
     } catch (err: unknown) {
       if (err instanceof Error) {
         toast.error('タグの削除に失敗しました: ' + err.message);
@@ -97,6 +97,25 @@ export default function TagDetailPage() {
       }
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // タグ割り当て解除
+  const handleUnassign = async (userId: string, username: string) => {
+    if (!confirm(`ユーザー ${username} (${userId}) からタグを解除しますか？`)) {
+      return;
+    }
+
+    try {
+      await unassignTag(tagId, userId);
+      toast.success('タグの割り当てを解除しました');
+      fetchTag(); // 一覧を再取得
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error('タグの解除に失敗しました: ' + err.message);
+      } else {
+        toast.error('タグの解除に失敗しました');
+      }
     }
   };
 
@@ -109,7 +128,7 @@ export default function TagDetailPage() {
     <div className="space-y-6">
       {/* パンくず */}
       <div className="text-sm text-gray-500">
-        <Link href="/main/tags" className="hover:text-gray-700 hover:underline">
+        <Link href="/tags" className="hover:text-gray-700 hover:underline">
           タグ管理
         </Link>
         {' / '}
@@ -192,6 +211,7 @@ export default function TagDetailPage() {
                       <TableHead>ユーザー名</TableHead>
                       <TableHead>メールアドレス</TableHead>
                       <TableHead>ユーザーID</TableHead>
+                      <TableHead className="text-right">アクション</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -203,6 +223,15 @@ export default function TagDetailPage() {
                         <TableCell>{assignedUser.email}</TableCell>
                         <TableCell className="text-gray-500 text-sm">
                           {assignedUser.id}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleUnassign(assignedUser.id, assignedUser.username)}
+                          >
+                            解除
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

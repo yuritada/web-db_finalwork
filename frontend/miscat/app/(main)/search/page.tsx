@@ -100,9 +100,9 @@ export default function SearchPage() {
   // 結果クリック時の処理
   const handleResultClick = (result: SearchResult) => {
     if (result.type === 'wiki') {
-      router.push(`/main/wiki/${result.id}`);
+      router.push(`/wiki/${result.id}`);
     } else if (result.type === 'tag') {
-      router.push(`/main/tags/${result.id}`);
+      router.push(`/tags/${result.id}`);
     }
     // userの場合は詳細ページがないため何もしない
   };
