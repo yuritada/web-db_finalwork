@@ -1,9 +1,10 @@
 """
 Channel Model
 """
-from sqlalchemy import String, Boolean, Integer
+from sqlalchemy import String, Boolean, Integer, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional, List
+from datetime import datetime
 
 from .base import Base
 
@@ -15,6 +16,11 @@ class Channel(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_private: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow
+    )
 
     # Relationships
     messages: Mapped[List["Message"]] = relationship(

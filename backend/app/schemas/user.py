@@ -30,6 +30,15 @@ class UserPublic(UserBase):
     model_config = {"from_attributes": True}
 
 
+class UserInfo(BaseModel):
+    """ユーザー基本情報（API連携用）"""
+    id: uuid.UUID
+    username: str
+    email: str
+
+    model_config = {"from_attributes": True}
+
+
 class UserPublicWithTags(UserPublic):
     """タグ情報を含むユーザー公開情報"""
     tags: List["TagPublic"] = []

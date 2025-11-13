@@ -1,0 +1,139 @@
+name: Backend Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: fastapi_user
+          POSTGRES_PASSWORD: fastapi_password
+          POSTGRES_DB: commu_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt || pip install fastapi uvicorn sqlalchemy psycopg2-binary pydantic python-jose passlib bcrypt requests
+
+      - name: Set up environment variables
+        run: |
+          cd backend
+          cat > .env << EOF
+          POSTGRES_USER=fastapi_user
+          POSTGRES_PASSWORD=fastapi_password
+          POSTGRES_DB=commu_db
+          DATABASE_URL=postgresql+psycopg2://fastapi_user:fastapi_password@localhost:5432/commu_db
+          SECRET_KEY=test_secret_key_for_github_actions_ci_cd
+          ALGORITHM=HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES=60
+          NEXT_PUBLIC_API_URL_SERVER=http://localhost:8000
+          NEXT_PUBLIC_API_URL_CLIENT=/api
+          EOF
+
+      - name: Run Alembic migrations
+        run: |
+          cd backend
+          # Alembicがセットアップされている場合のみ実行
+          if [ -f "alembic.ini" ]; then
+            pip install alembic
+            alembic upgrade head
+          else
+            echo "Alembic not configured, skipping migrations"
+          fi
+
+      - name: Start backend server
+        run: |
+          cd backend
+          uvicorn main:app --host 0.0.0.0 --port 8000 &
+          echo $! > backend.pid
+
+          # バックエンドの起動を待機
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/health > /dev/null; then
+              echo "Backend is up!"
+              break
+            fi
+            echo "Waiting for backend to start... ($i/30)"
+            sleep 2
+          done
+
+          # 最終確認
+          if ! curl -s http://localhost:8000/health > /dev/null; then
+            echo "Failed to start backend server"
+            exit 1
+          fi
+
+      - name: Run integration tests
+        env:
+          BACKEND_URL: http://localhost:8000
+        run: |
+          cd backend/tests
+          python3 integration_test.py
+
+      - name: Stop backend server
+        if: always()
+        run: |
+          if [ -f backend/backend.pid ]; then
+            kill $(cat backend/backend.pid) || true
+            rm backend/backend.pid
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-results
+          path: |
+            backend/logs/
+            backend/tests/*.log
+          retention-days: 7
+
+      - name: Comment test results on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const testResult = process.env.TEST_RESULT || 'Test execution completed';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🧪 Integration Test Results\n\n${testResult}\n\nCheck the [workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for details.`
+            });

@@ -18,6 +18,7 @@ from app.models.user import User
 from app.schemas.channel import (
     ChannelCreate,
     ChannelPublic,
+    ChannelDetail,
     MessageCreate,
     MessageWithSender
 )
@@ -101,6 +102,59 @@ async def get_channels(
     """
     channels = get_all_channels(db)
     return channels
+
+
+@router.get("/{channel_id}", response_model=ChannelDetail)
+async def get_channel_details(
+    channel_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+):
+    """
+    チャンネル詳細を取得する
+
+    v3仕様書: GET /channels/{channel_id}
+
+    **認証**: 必須
+
+    **権限**: 全ユーザーが全チャンネル閲覧可能
+
+    **Args:**
+        channel_id: チャンネルID
+        current_user: 認証済みユーザー
+        db: データベースセッション
+
+    **Returns:**
+        ChannelDetail: チャンネル詳細情報
+            - id: チャンネルID
+            - name: チャンネル名
+            - description: チャンネル説明
+            - is_private: プライベートチャンネルか
+            - created_at: 作成日時
+            - member_count: メンバー数（現在は0）
+            - members: メンバーリスト（現在は空配列）
+
+    **Raises:**
+        404: チャンネルが存在しない場合
+        401: 未認証の場合
+    """
+    channel = get_channel_by_id(db, channel_id)
+    if not channel:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Channel with id {channel_id} not found"
+        )
+
+    # ChannelDetail型で返す（member_countとmembersはデフォルト値）
+    return ChannelDetail(
+        id=channel.id,
+        name=channel.name,
+        description=channel.description,
+        is_private=channel.is_private,
+        created_at=channel.created_at,
+        member_count=0,  # Phase 5で実装予定
+        members=[]  # Phase 5で実装予定
+    )
 
 
 # ===== チャンネルメッセージ =====

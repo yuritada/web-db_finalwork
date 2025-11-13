@@ -270,7 +270,9 @@ export interface ChannelPublic {
 }
 
 export interface ChannelDetail extends ChannelPublic {
-  members?: UserInfo[];
+  created_at: string;
+  member_count: number;
+  members: UserInfo[];
 }
 
 export interface Message {
@@ -308,14 +310,9 @@ export async function createChannel(data: ChannelCreate): Promise<ChannelPublic>
 }
 
 // チャンネル詳細取得 (GET /channels/:channel_id)
-// Note: Worker2実装にはchannelDetail APIがないため、getChannelsから取得
 export async function getChannel(channelId: number): Promise<ChannelDetail> {
-  const channels = await getChannels();
-  const channel = channels.find(c => c.id === channelId);
-  if (!channel) {
-    throw new Error(`Channel with id ${channelId} not found`);
-  }
-  return channel;
+  const response = await apiClient.get<ChannelDetail>(`/channels/${channelId}`);
+  return response.data;
 }
 
 // チャンネルメッセージ一覧取得 (GET /channels/:channel_id/messages)
@@ -357,10 +354,11 @@ export async function addChannelMember(
 // ====================
 
 export interface DMConversation {
-  partner_id: string;
-  partner_username: string;
+  user_id: string;
+  username: string;
   last_message?: string;
   last_message_at?: string;
+  unread_count?: number;
 }
 
 export interface DMMessageCreate {

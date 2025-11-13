@@ -7,6 +7,8 @@ from typing import Optional, List
 from datetime import datetime
 import uuid
 
+from app.schemas.user import UserInfo
+
 
 # ===== チャンネル関連 =====
 
@@ -34,11 +36,16 @@ class ChannelPublic(BaseModel):
 
 
 class ChannelDetail(ChannelPublic):
-    """チャンネル詳細情報（将来の拡張用）
+    """チャンネル詳細情報
 
-    メンバーリスト、最終メッセージ等を含む可能性
+    v3仕様書: GET /channels/{channel_id} レスポンス
+    フロントエンドが期待する型に対応
     """
-    pass
+    created_at: datetime = Field(..., description="チャンネル作成日時")
+    member_count: int = Field(default=0, description="メンバー数")
+    members: List[UserInfo] = Field(default=[], description="メンバーリスト（Phase 5で実装予定）")
+
+    model_config = {"from_attributes": True}
 
 
 # ===== メッセージ関連 =====

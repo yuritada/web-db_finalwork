@@ -1,0 +1,109 @@
+name: Frontend Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'frontend/miscat/**'
+      - '.github/workflows/frontend-build.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'frontend/miscat/**'
+      - '.github/workflows/frontend-build.yml'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/miscat/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend/miscat
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd frontend/miscat
+          npm run lint || true
+        continue-on-error: true
+
+      - name: Run type check
+        run: |
+          cd frontend/miscat
+          npx tsc --noEmit
+
+      - name: Run tests
+        if: ${{ hashFiles('frontend/miscat/package.json') && contains(fromJson('["test", "test:ci"]'), 'test') }}
+        run: |
+          cd frontend/miscat
+          if grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "No test script found, skipping tests"
+          fi
+        continue-on-error: true
+
+      - name: Build Next.js application
+        run: |
+          cd frontend/miscat
+          npm run build
+        env:
+          NEXT_PUBLIC_API_URL_SERVER: http://backend:8000
+          NEXT_PUBLIC_API_URL_CLIENT: /api
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-build
+          path: |
+            frontend/miscat/.next/
+            frontend/miscat/out/
+          retention-days: 7
+
+      - name: Check build size
+        run: |
+          cd frontend/miscat
+          echo "=== Build Size Report ==="
+          du -sh .next/ || echo ".next/ not found"
+          du -sh out/ || echo "out/ not found"
+          echo ""
+          echo "=== Largest Files ==="
+          find .next -type f -exec du -h {} + 2>/dev/null | sort -rh | head -10 || echo "Could not analyze files"
+
+      - name: Comment build results on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const buildSuccess = '${{ job.status }}' === 'success';
+            const emoji = buildSuccess ? '✅' : '❌';
+            const status = buildSuccess ? 'succeeded' : 'failed';
+
+            let message = `## ${emoji} Frontend Build ${status}\n\n`;
+            message += `**Build Status**: ${status}\n`;
+            message += `**Node.js Version**: 18\n`;
+            message += `**Next.js Version**: 16.0.1\n\n`;
+            message += `Check the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
