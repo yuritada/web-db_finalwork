@@ -56,11 +56,25 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
     onConnect: () => {
       console.log('WebSocket connected to DM:', partnerId);
     },
-    onDisconnect: () => {
-      console.log('WebSocket disconnected from DM:', partnerId);
+    onDisconnect: (code, reason) => {
+      console.log('WebSocket disconnected from DM:', partnerId, code, reason);
+      // サーバー再起動の場合は静かに再接続する（自動処理）
+      if (code === 1012) {
+        // ユーザーには何も表示しない（開発環境特有）
+      }
     },
     onError: (error) => {
       console.error('WebSocket error:', error);
+    },
+    onAuthError: () => {
+      // 認証エラー - トークンが無効または期限切れ
+      toast.error('セッションが期限切れです。再度ログインしてください。');
+      // ローカルストレージからトークンを削除
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+      }
+      // ログインページへリダイレクト
+      router.push('/login');
     }
   });
 

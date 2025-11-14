@@ -16,8 +16,9 @@ export interface WebSocketMessage {
 interface UseWebSocketOptions {
   onMessage?: (message: WebSocketMessage) => void;
   onConnect?: () => void;
-  onDisconnect?: () => void;
+  onDisconnect?: (code?: number, reason?: string) => void;
   onError?: (error: Event) => void;
+  onAuthError?: () => void;  // 認証エラー時のコールバック
 }
 
 /**
@@ -33,7 +34,14 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isConnectingRef = useRef(false); // Prevent duplicate connection attempts
+  const optionsRef = useRef(options); // Store options in ref to prevent reconnection on options change
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
+
+  // Update options ref when options change
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   // 最大再接続試行回数
   const MAX_RECONNECT_ATTEMPTS = 5;
@@ -64,7 +72,24 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
    * WebSocket接続を確立
    */
   const connect = useCallback(() => {
-    if (!url) return;
+    if (!url) {
+      console.log('[useWebSocket] No URL provided, skipping connect');
+      return;
+    }
+
+    // 既に接続中または接続済みの場合はスキップ
+    if (isConnectingRef.current) {
+      console.log('[useWebSocket] Already connecting, skipping...');
+      return;
+    }
+
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log('[useWebSocket] Already connected (OPEN state), skipping...');
+      return;
+    }
+
+    console.log('[useWebSocket] Starting new connection to:', url);
+    isConnectingRef.current = true;
 
     // 既存の接続をクリーンアップ
     if (wsRef.current) {
@@ -75,7 +100,7 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
     const token = getAuthToken();
     if (!token) {
       console.error('No authentication token found');
-      options.onError?.(new Event('No authentication token'));
+      optionsRef.current.onError?.(new Event('No authentication token'));
       return;
     }
 
@@ -87,9 +112,10 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
 
       ws.onopen = () => {
         console.log('WebSocket connected:', url);
+        isConnectingRef.current = false;
         setIsConnected(true);
         setReconnectAttempts(0);
-        options.onConnect?.();
+        optionsRef.current.onConnect?.();
 
         // Ping送信を開始
         if (pingIntervalRef.current) {
@@ -102,7 +128,7 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
           setLastMessage(message);
-          options.onMessage?.(message);
+          optionsRef.current.onMessage?.(message);
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
         }
@@ -110,13 +136,15 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
-        options.onError?.(error);
+        isConnectingRef.current = false;
+        optionsRef.current.onError?.(error);
       };
 
       ws.onclose = (event) => {
         console.log('WebSocket disconnected:', event.code, event.reason);
+        isConnectingRef.current = false;
         setIsConnected(false);
-        options.onDisconnect?.();
+        optionsRef.current.onDisconnect?.(event.code, event.reason);
 
         // Ping送信を停止
         if (pingIntervalRef.current) {
@@ -124,8 +152,21 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
           pingIntervalRef.current = null;
         }
 
-        // 自動再接続（最大試行回数まで）
+        // クローズコードに応じた処理
+        if (event.code === 4001) {
+          // 認証エラー (4001) - 再接続せずに認証エラーコールバックを呼ぶ
+          console.error('Authentication failed. Token may be invalid or expired.');
+          optionsRef.current.onAuthError?.();
+          return; // 再接続しない
+        }
+
+        // サーバー再起動 (1012) やその他の切断 - 自動再接続を試みる
         if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && url) {
+          const isServerRestart = event.code === 1012;
+          if (isServerRestart) {
+            console.log('Server restarting, will reconnect automatically...');
+          }
+
           reconnectTimeoutRef.current = setTimeout(() => {
             console.log(`Reconnecting... (attempt ${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
             setReconnectAttempts(prev => prev + 1);
@@ -137,14 +178,17 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
       wsRef.current = ws;
     } catch (error) {
       console.error('Error creating WebSocket:', error);
-      options.onError?.(new Event('Connection failed'));
+      isConnectingRef.current = false;
+      optionsRef.current.onError?.(new Event('Connection failed'));
     }
-  }, [url, options, reconnectAttempts, sendPing]);
+  }, [url, reconnectAttempts, sendPing]);
 
   /**
    * WebSocket接続をクリーンアップ
    */
   const disconnect = useCallback(() => {
+    isConnectingRef.current = false;
+
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -168,12 +212,15 @@ export function useWebSocket(url: string | null, options: UseWebSocketOptions = 
    */
   useEffect(() => {
     if (url) {
+      console.log('[useWebSocket useEffect] URL changed, connecting...', url);
       connect();
     }
 
     return () => {
+      console.log('[useWebSocket useEffect] Cleanup - disconnecting');
       disconnect();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]); // connectとdisconnectは依存配列から除外（無限ループ防止）
 
   return {

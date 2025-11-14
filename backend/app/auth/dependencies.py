@@ -80,23 +80,34 @@ async def get_current_user_ws(token: str, db: Session) -> Optional[User]:
     Returns:
         認証されたユーザー、失敗時はNone
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     try:
         # トークンをデコード
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id_str: str = payload.get("sub")
 
         if user_id_str is None:
+            logger.warning("Token payload has no 'sub' field")
             return None
 
         # user_idをUUIDに変換
         try:
             user_id = uuid_lib.UUID(user_id_str)
-        except ValueError:
+        except ValueError as e:
+            logger.error(f"Invalid UUID format: {user_id_str}")
             return None
 
         # ユーザーを取得
         user = get_user_by_id(db, user_id)
+        if not user:
+            logger.warning(f"User not found for id: {user_id}")
         return user
 
-    except JWTError:
+    except JWTError as e:
+        logger.error(f"JWT decode error: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error in get_current_user_ws: {e}", exc_info=True)
         return None

@@ -62,11 +62,25 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
     onConnect: () => {
       console.log('WebSocket connected to channel:', channelId);
     },
-    onDisconnect: () => {
-      console.log('WebSocket disconnected from channel:', channelId);
+    onDisconnect: (code, reason) => {
+      console.log('WebSocket disconnected from channel:', channelId, code, reason);
+      // サーバー再起動の場合は静かに再接続する（自動処理）
+      if (code === 1012) {
+        // ユーザーには何も表示しない（開発環境特有）
+      }
     },
     onError: (error) => {
       console.error('WebSocket error:', error);
+    },
+    onAuthError: () => {
+      // 認証エラー - トークンが無効または期限切れ
+      toast.error('セッションが期限切れです。再度ログインしてください。');
+      // ローカルストレージからトークンを削除
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+      }
+      // ログインページへリダイレクト
+      router.push('/login');
     }
   });
 
