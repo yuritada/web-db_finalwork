@@ -3,11 +3,14 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/channel/MessageList';
 import { MessageInput } from '@/components/channel/MessageInput';
+import { CreateWikiFromMessagesDialog } from '@/components/wiki/CreateWikiFromMessagesDialog';
 import { Message, getDMMessages, sendDMMessage } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import { BookText } from 'lucide-react';
 
 export default function DMDetailPage({ params }: { params: Promise<{ dm_id: string }> }) {
   const resolvedParams = use(params);
@@ -17,6 +20,7 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [partnerUsername, setPartnerUsername] = useState('');
+  const [isWikiDialogOpen, setIsWikiDialogOpen] = useState(false);
 
   // dm_idは実際にはpartner_idとして扱う
   const partnerId = resolvedParams.dm_id;
@@ -103,7 +107,18 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
       {/* 相手情報 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">{partnerUsername || partnerId}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">{partnerUsername || partnerId}</CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsWikiDialogOpen(true)}
+              disabled={messages.length === 0}
+            >
+              <BookText className="h-4 w-4 mr-2" />
+              Wikiにまとめる
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2">
@@ -121,6 +136,14 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
         />
         <MessageInput onSend={handleSendMessage} />
       </div>
+
+      {/* Wikiにまとめるダイアログ */}
+      <CreateWikiFromMessagesDialog
+        open={isWikiDialogOpen}
+        onOpenChange={setIsWikiDialogOpen}
+        messages={messages}
+        defaultTitle={`DMの会話: ${partnerUsername || partnerId}`}
+      />
     </div>
   );
 }

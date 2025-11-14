@@ -7,7 +7,7 @@ from typing import List
 
 from app.db.connect import get_session
 from app.db.create import create_wiki_page, share_wiki_page
-from app.db.read import get_wiki_pages_for_user, get_wiki_page_by_id
+from app.db.read import get_wiki_pages_for_user, get_wiki_page_by_id, get_user_by_id
 from app.db.update import update_wiki_page
 from app.db.delete import remove_wiki_permission
 from app.core.dependencies import (
@@ -21,7 +21,8 @@ from app.schemas.wiki import (
     WikiPageUpdate,
     WikiPagePublic,
     WikiPageDetail,
-    PermissionSet
+    PermissionSet,
+    PermissionInfo
 )
 
 router = APIRouter(prefix="/wiki", tags=["Wiki"])
@@ -43,7 +44,19 @@ async def get_wiki_pages(
         List[WikiPagePublic]: Wikiページ一覧
     """
     pages = get_wiki_pages_for_user(db, current_user.id)
-    return pages
+    result = []
+    for page in pages:
+        creator = get_user_by_id(db, page.creator_id)
+        result.append(WikiPagePublic(
+            id=page.id,
+            title=page.title,
+            content=page.content,
+            creator_id=page.creator_id,
+            creator_username=creator.username if creator else "Unknown",
+            created_at=page.created_at,
+            updated_at=page.updated_at
+        ))
+    return result
 
 
 @router.post("/pages", response_model=WikiPagePublic, status_code=status.HTTP_201_CREATED)
@@ -66,7 +79,15 @@ async def create_new_wiki_page(
         WikiPagePublic: 作成されたページ
     """
     new_page = create_wiki_page(db, page_data, current_user.id)
-    return new_page
+    return WikiPagePublic(
+        id=new_page.id,
+        title=new_page.title,
+        content=new_page.content,
+        creator_id=new_page.creator_id,
+        creator_username=current_user.username,
+        created_at=new_page.created_at,
+        updated_at=new_page.updated_at
+    )
 
 
 @router.get("/pages/{page_id}", response_model=WikiPageDetail)
@@ -99,7 +120,29 @@ async def get_wiki_page(
             detail="Wiki page not found"
         )
 
-    return page
+    # creator_usernameを取得
+    creator = get_user_by_id(db, page.creator_id)
+
+    # permissionsにusernameを追加
+    permissions_with_username = []
+    for perm in page.permissions:
+        perm_user = get_user_by_id(db, perm.user_id)
+        permissions_with_username.append(PermissionInfo(
+            user_id=perm.user_id,
+            username=perm_user.username if perm_user else "Unknown",
+            permission_level=perm.permission_level
+        ))
+
+    return WikiPageDetail(
+        id=page.id,
+        title=page.title,
+        content=page.content,
+        creator_id=page.creator_id,
+        creator_username=creator.username if creator else "Unknown",
+        created_at=page.created_at,
+        updated_at=page.updated_at,
+        permissions=permissions_with_username
+    )
 
 
 @router.put("/pages/{page_id}", response_model=WikiPagePublic)
@@ -134,7 +177,18 @@ async def update_existing_wiki_page(
             detail="Wiki page not found"
         )
 
-    return updated_page
+    # creator_usernameを取得
+    creator = get_user_by_id(db, updated_page.creator_id)
+
+    return WikiPagePublic(
+        id=updated_page.id,
+        title=updated_page.title,
+        content=updated_page.content,
+        creator_id=updated_page.creator_id,
+        creator_username=creator.username if creator else "Unknown",
+        created_at=updated_page.created_at,
+        updated_at=updated_page.updated_at
+    )
 
 
 @router.post("/pages/{page_id}/share", status_code=status.HTTP_201_CREATED)

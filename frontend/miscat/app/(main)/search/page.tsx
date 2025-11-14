@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { search, SearchResult } from '@/lib/api';
 import { toast } from 'sonner';
+import { MessageCircle } from 'lucide-react';
 
 export default function SearchPage() {
   const router = useRouter();
@@ -105,6 +106,11 @@ export default function SearchPage() {
       router.push(`/tags/${result.id}`);
     }
     // userの場合は詳細ページがないため何もしない
+  };
+
+  // DMページに移動
+  const handleStartDM = (userId: string, username: string) => {
+    router.push(`/dm/${userId}?username=${encodeURIComponent(username)}`);
   };
 
   return (
@@ -229,30 +235,46 @@ export default function SearchPage() {
                       onClick={() => result.type !== 'user' && handleResultClick(result)}
                     >
                       <CardHeader>
-                        <div className="flex items-start gap-3">
-                          <div className="text-2xl">{getTypeIcon(result.type)}</div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <CardTitle className="text-lg">
-                                {result.type === 'wiki' && result.title}
-                                {result.type === 'tag' && result.name}
-                                {result.type === 'user' && result.username}
-                              </CardTitle>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                {getTypeLabel(result.type)}
-                              </span>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className="text-2xl">{getTypeIcon(result.type)}</div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <CardTitle className="text-lg">
+                                  {result.type === 'wiki' && result.title}
+                                  {result.type === 'tag' && result.name}
+                                  {result.type === 'user' && result.username}
+                                </CardTitle>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                  {getTypeLabel(result.type)}
+                                </span>
+                              </div>
+                              {result.type === 'wiki' && result.snippet && (
+                                <CardDescription className="mt-2">
+                                  {result.snippet}
+                                </CardDescription>
+                              )}
+                              {result.type === 'user' && result.email && (
+                                <CardDescription className="mt-1">
+                                  {result.email}
+                                </CardDescription>
+                              )}
                             </div>
-                            {result.type === 'wiki' && result.snippet && (
-                              <CardDescription className="mt-2">
-                                {result.snippet}
-                              </CardDescription>
-                            )}
-                            {result.type === 'user' && result.email && (
-                              <CardDescription className="mt-1">
-                                {result.email}
-                              </CardDescription>
-                            )}
                           </div>
+                          {/* ユーザーの場合はDMボタンを表示 */}
+                          {result.type === 'user' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartDM(result.id as string, result.username || '');
+                              }}
+                            >
+                              <MessageCircle className="h-4 w-4 mr-2" />
+                              DMを送る
+                            </Button>
+                          )}
                         </div>
                       </CardHeader>
                     </Card>

@@ -154,12 +154,14 @@ export interface WikiPagePublic {
   title: string;
   content: string;
   creator_id: string;
+  creator_username: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface PermissionInfo {
   user_id: string;
+  username: string;
   permission_level: PermissionLevel;
 }
 

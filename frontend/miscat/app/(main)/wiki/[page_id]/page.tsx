@@ -123,8 +123,8 @@ export default function WikiDetailPage() {
   };
 
   // 共有解除
-  const handleUnshare = async (userId: string) => {
-    if (!confirm(`ユーザー ${userId} との共有を解除しますか？`)) {
+  const handleUnshare = async (userId: string, username: string) => {
+    if (!confirm(`ユーザー ${username} との共有を解除しますか？`)) {
       return;
     }
 
@@ -208,7 +208,7 @@ export default function WikiDetailPage() {
                     <CardTitle className="text-2xl">{page.title}</CardTitle>
                   )}
                   <CardDescription>
-                    作成者: {page.creator_id}
+                    作成者: {page.creator_username}
                   </CardDescription>
                 </div>
 
@@ -318,7 +318,7 @@ export default function WikiDetailPage() {
                     >
                       <div>
                         <p className="text-sm font-medium text-gray-900">
-                          {permission.user_id}
+                          {permission.username}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -332,7 +332,7 @@ export default function WikiDetailPage() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleUnshare(permission.user_id)}
+                          onClick={() => handleUnshare(permission.user_id, permission.username)}
                         >
                           解除
                         </Button>

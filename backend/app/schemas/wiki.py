@@ -30,6 +30,7 @@ class WikiPagePublic(WikiPageBase):
     """Wikiページ公開情報"""
     id: int
     creator_id: uuid.UUID
+    creator_username: str = ""
     created_at: datetime
     updated_at: datetime
 
@@ -39,6 +40,7 @@ class WikiPagePublic(WikiPageBase):
 class PermissionInfo(BaseModel):
     """権限情報"""
     user_id: uuid.UUID
+    username: str = ""
     permission_level: PermissionLevel
 
     model_config = {"from_attributes": True}

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.db.connect import get_session
-from app.db.create import create_channel, create_channel_message
+from app.db.create import create_channel, create_channel_message, add_channel_member
 from app.db.read import (
     get_all_channels,
     get_channel_by_id,
@@ -69,6 +69,8 @@ async def create_new_channel(
     """
     try:
         channel = create_channel(db, channel_data)
+        # チャンネル作成者を自動的にメンバーとして追加
+        add_channel_member(db, channel.id, current_user.id)
         return channel
     except Exception as e:
         # IntegrityError (重複チャンネル名など)

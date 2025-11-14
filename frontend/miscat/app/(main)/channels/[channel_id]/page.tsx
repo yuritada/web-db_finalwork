@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/channel/MessageList';
 import { MessageInput } from '@/components/channel/MessageInput';
 import { AddMemberDialog } from '@/components/channel/AddMemberDialog';
+import { CreateWikiFromMessagesDialog } from '@/components/wiki/CreateWikiFromMessagesDialog';
 import {
   Message,
   ChannelDetail,
@@ -16,7 +17,7 @@ import {
 } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { UserPlus, Users } from 'lucide-react';
+import { UserPlus, Users, BookText } from 'lucide-react';
 
 export default function ChannelDetailPage({ params }: { params: Promise<{ channel_id: string }> }) {
   const resolvedParams = use(params);
@@ -26,6 +27,7 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false);
+  const [isWikiDialogOpen, setIsWikiDialogOpen] = useState(false);
 
   // チャンネル情報とメッセージ取得
   const fetchData = async () => {
@@ -117,6 +119,15 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
               )}
               <Button
                 size="sm"
+                variant="outline"
+                onClick={() => setIsWikiDialogOpen(true)}
+                disabled={messages.length === 0}
+              >
+                <BookText className="h-4 w-4 mr-2" />
+                Wikiにまとめる
+              </Button>
+              <Button
+                size="sm"
                 onClick={() => setIsAddMemberDialogOpen(true)}
               >
                 <UserPlus className="h-4 w-4 mr-2" />
@@ -171,6 +182,14 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
         onOpenChange={setIsAddMemberDialogOpen}
         channelId={parseInt(resolvedParams.channel_id)}
         onMemberAdded={fetchData}
+      />
+
+      {/* Wikiにまとめるダイアログ */}
+      <CreateWikiFromMessagesDialog
+        open={isWikiDialogOpen}
+        onOpenChange={setIsWikiDialogOpen}
+        messages={messages}
+        defaultTitle={`チャンネル: ${channel.name}`}
       />
     </div>
   );

@@ -216,7 +216,7 @@ export default function WikiListPage() {
                     <CardHeader>
                       <CardTitle className="text-lg">{page.title}</CardTitle>
                       <CardDescription>
-                        作成者: {page.creator_id}
+                        作成者: {page.creator_username}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
