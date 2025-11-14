@@ -2,13 +2,19 @@
 FROM node:20-slim AS builder 
 WORKDIR /app
 
-# 修正: 先にすべてのファイルをコピーします
-COPY miscat/ .
+# 修正: package.json と Tailwind/PostCSS の設定ファイルのみを先にコピー
+# (package-lock.json をコピーしないことで、Linux環境用の依存関係を強制インストール)
+COPY miscat/package.json ./
+COPY miscat/postcss.config.mjs ./
+# (↑もし tailwind.config.ts が存在しない場合は、この行は削除しても構いません)
 
-# 修正: 関連ファイルがすべて揃った状態で install を実行します
+# 修正: Render(Linux)環境で依存関係をクリーンインストール
 RUN npm install
 
-# ビルドを実行します
+# 修正: 残りのすべてのアプリケーションコードをコピー
+COPY miscat/ .
+
+# ビルドを実行
 RUN npm run build
 
 # 2. Production Stage
