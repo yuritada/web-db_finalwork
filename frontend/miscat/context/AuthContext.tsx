@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string) => {
+    setIsLoading(true);
     try {
       await apiLogin(username, password);
       // ログイン後、ユーザー情報を取得
@@ -44,6 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       setUser(null);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 

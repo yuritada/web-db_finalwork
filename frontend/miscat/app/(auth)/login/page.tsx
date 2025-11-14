@@ -1,37 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { login } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // 認証済みユーザーは /dashboard にリダイレクト
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
+    setIsLoggingIn(true);
 
     try {
       // バリデーション
       if (!username || !password) {
         setError('ユーザー名とパスワードを入力してください');
-        setIsLoading(false);
+        setIsLoggingIn(false);
         return;
       }
 
-      // ログイン実行
+      // AuthContext の login 関数を使用
+      // ログイン成功後、isAuthenticated が true になり、
+      // useEffect が /dashboard にリダイレクトする
       await login(username, password);
 
-      // ログイン成功後、ダッシュボードへリダイレクト
-      router.push('/dashboard');
+      // リダイレクトは useEffect が自動的に行うため、ここでは不要
     } catch (err: unknown) {
       // エラーハンドリング
       if (err instanceof Error) {
@@ -39,10 +48,26 @@ export default function LoginPage() {
       } else {
         setError('ログインに失敗しました');
       }
-    } finally {
-      setIsLoading(false);
+      setIsLoggingIn(false);
     }
   };
+
+  // 認証チェック中
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-sky-500 border-r-transparent"></div>
+          <p className="mt-2 text-sm text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 認証済みの場合は何も表示しない（リダイレクト中）
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -67,7 +92,7 @@ export default function LoginPage() {
                 placeholder="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoggingIn || authLoading}
                 required
                 autoComplete="username"
               />
@@ -82,7 +107,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoggingIn || authLoading}
                 required
                 autoComplete="current-password"
               />
@@ -95,9 +120,9 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoggingIn || authLoading}
             >
-              {isLoading ? 'ログイン中...' : 'ログイン'}
+              {isLoggingIn ? 'ログイン中...' : 'ログイン'}
             </Button>
           </form>
         </CardContent>
