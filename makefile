@@ -1,5 +1,5 @@
 # .PHONY に clean を追加
-.PHONY: help up down clean logs logs-be logs-fe ps build restart migrate-be sh-be sh-fe sh-db install-be install-fe
+.PHONY: help up down clean logs logs-be logs-fe ps build restart migrate-be init setup sh-be sh-fe sh-db install-be install-fe
 
 help:
 	@echo "----------------------------------------------------"
@@ -8,6 +8,7 @@ help:
 	@echo " up           - Start all services in detached mode / すべてのサービスをデタッチモードで起動"
 	@echo " down         - Stop and remove all services / すべてのサービスを停止・削除"
 	@echo " clean        - Remove containers, local images, volumes and networks created by compose / composeで作成されたコンテナ・ローカルイメージ・ボリューム・ネットワークを削除"
+	@echo " setup        - Clean setup: up + migrate + init database / クリーンセットアップ: 起動+マイグレーション+DB初期化"
 	@echo " logs         - View logs from all services / 全サービスのログを表示"
 	@echo " logs-be      - View backend logs / バックエンドのログを表示"
 	@echo " logs-fe      - View frontend logs / フロントエンドのログを表示"
@@ -18,6 +19,7 @@ help:
 	@echo " sh-fe        - Enter frontend container shell (/bin/sh) / フロントエンドコンテナのシェルに入る (/bin/sh)"
 	@echo " sh-db        - Enter database container (psql) / データベースコンテナに接続（psql）"
 	@echo " migrate-be   - Run backend DB migrations (e.g., alembic) / バックエンドのDBマイグレーションを実行（例: alembic）"
+	@echo " init         - Initialize database with test data / データベースにテストデータを投入"
 	@echo " install-be   - Install backend dependencies (uv pip install) / バックエンドの依存関係をインストール（uv pip install）"
 	@echo " install-fe   - Install frontend dependencies (npm install) / フロントエンドの依存関係をインストール（npm install）"
 	@echo "----------------------------------------------------"
@@ -64,6 +66,23 @@ sh-db:
 migrate-be:
 	@echo "Running DB migrations (assuming alembic)..."
 	docker compose exec backend alembic upgrade head
+
+init:
+	@echo "Initializing database with test data..."
+	docker compose exec backend python scripts/init_db.py
+
+setup: up
+	@echo "Waiting for services to be ready..."
+	@sleep 5
+	@$(MAKE) migrate-be
+	@$(MAKE) init
+	@echo "----------------------------------------------------"
+	@echo " Setup completed! / セットアップ完了！"
+	@echo "----------------------------------------------------"
+	@echo " Test credentials / テスト用認証情報:"
+	@echo "   Username: student_test"
+	@echo "   Password: password123"
+	@echo "----------------------------------------------------"
 
 install-be:
 	@echo "Installing/Updating backend dependencies (with dev) using uv..."

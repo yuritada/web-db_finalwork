@@ -85,7 +85,9 @@ export interface SignupRequest {
 // サインアップ関数 (POST /api/auth/signup)
 // Next.js API Routeを経由（Cookie管理のため）
 export async function signup(data: SignupRequest): Promise<User> {
-  const response = await axios.post<User>('/api/auth/signup', data);
+  const response = await axios.post<User>('/api/auth/signup', data, {
+    withCredentials: true, // Cookieを送受信するために必要
+  });
   return response.data;
 }
 
@@ -100,9 +102,10 @@ export async function login(username: string, password: string): Promise<LoginRe
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
+    withCredentials: true, // Cookieを送受信するために必要
   });
 
-  // トークンをlocalStorageに保存
+  // トークンをlocalStorageに保存（フォールバック用）
   if (response.data.access_token) {
     setAuthToken(response.data.access_token);
   }
@@ -113,7 +116,9 @@ export async function login(username: string, password: string): Promise<LoginRe
 // ログアウト関数 (POST /api/auth/logout)
 // Next.js API Routeを経由（Cookie管理のため）
 export async function logout(): Promise<void> {
-  await axios.post('/api/auth/logout');
+  await axios.post('/api/auth/logout', {}, {
+    withCredentials: true, // Cookieを送信するために必要
+  });
   // トークンをlocalStorageから削除
   removeAuthToken();
 }
@@ -121,7 +126,9 @@ export async function logout(): Promise<void> {
 // 現在のユーザー情報取得 (GET /api/auth/me)
 // Next.js API Routeを経由（Cookie管理のため）
 export async function getMe(): Promise<User> {
-  const response = await axios.get<User>('/api/auth/me');
+  const response = await axios.get<User>('/api/auth/me', {
+    withCredentials: true, // Cookieを送信するために必要
+  });
   return response.data;
 }
 

@@ -190,6 +190,20 @@ def get_channel_by_id(db: Session, channel_id: int) -> Optional[Channel]:
     return db.query(Channel).filter(Channel.id == channel_id).first()
 
 
+def get_channel_by_name(db: Session, channel_name: str) -> Optional[Channel]:
+    """
+    チャンネル名でチャンネルを取得する
+
+    Args:
+        db: データベースセッション
+        channel_name: チャンネル名
+
+    Returns:
+        Channelオブジェクト、存在しない場合はNone
+    """
+    return db.query(Channel).filter(Channel.name == channel_name).first()
+
+
 # Message関連の読み取り操作
 
 def get_channel_messages(

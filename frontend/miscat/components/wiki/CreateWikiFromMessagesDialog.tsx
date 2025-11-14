@@ -14,46 +14,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { createWikiPage, Message } from '@/lib/api';
 import { toast } from 'sonner';
+import {
+  convertMessagesToWikiContent,
+  autoGenerateWikiContent,
+  generateWikiTitle,
+} from '@/lib/wikiGenerator';
+import { Sparkles } from 'lucide-react';
 
 interface CreateWikiFromMessagesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   messages: Message[];
   defaultTitle: string;
-}
-
-/**
- * メッセージをWikiコンテンツに変換する関数
- */
-function convertMessagesToWikiContent(messages: Message[]): string {
-  if (messages.length === 0) {
-    return '';
-  }
-
-  // メッセージを時系列順にソート（古い順）
-  const sortedMessages = [...messages].sort((a, b) =>
-    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
-
-  let content = '# 会話履歴\n\n';
-  content += `このWikiは会話履歴から自動生成されました。\n\n`;
-  content += `---\n\n`;
-
-  sortedMessages.forEach((message, index) => {
-    const date = new Date(message.created_at);
-    const timeStr = date.toLocaleString('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    content += `## ${index + 1}. ${message.sender_username} (${timeStr})\n\n`;
-    content += `${message.content}\n\n`;
-  });
-
-  return content;
 }
 
 export function CreateWikiFromMessagesDialog({
@@ -66,13 +38,40 @@ export function CreateWikiFromMessagesDialog({
   const [title, setTitle] = useState(defaultTitle);
   const [content, setContent] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [generationMode, setGenerationMode] = useState<'basic' | 'auto'>('basic');
 
   // ダイアログが開かれたときにコンテンツを生成
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && messages.length > 0) {
       setContent(convertMessagesToWikiContent(messages));
+      setTitle(defaultTitle);
+      setGenerationMode('basic');
     }
     onOpenChange(newOpen);
+  };
+
+  // 自動生成モードに切り替え
+  const handleAutoGenerate = () => {
+    if (messages.length === 0) return;
+
+    const autoContent = autoGenerateWikiContent(messages);
+    const autoTitle = generateWikiTitle(messages, defaultTitle.split(':')[0]);
+
+    setContent(autoContent);
+    setTitle(autoTitle);
+    setGenerationMode('auto');
+    toast.success('高度な分析でWikiを自動生成しました');
+  };
+
+  // 基本モードに戻す
+  const handleBasicGenerate = () => {
+    if (messages.length === 0) return;
+
+    const basicContent = convertMessagesToWikiContent(messages);
+    setContent(basicContent);
+    setTitle(defaultTitle);
+    setGenerationMode('basic');
+    toast.success('基本形式でWikiを生成しました');
   };
 
   // Wiki作成
@@ -124,6 +123,31 @@ export function CreateWikiFromMessagesDialog({
         </DialogHeader>
 
         <form onSubmit={handleCreate} className="space-y-4 py-4">
+          {/* 生成モード切り替え */}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={generationMode === 'basic' ? 'default' : 'outline'}
+              size="sm"
+              onClick={handleBasicGenerate}
+              disabled={isCreating}
+              className="flex-1"
+            >
+              基本形式
+            </Button>
+            <Button
+              type="button"
+              variant={generationMode === 'auto' ? 'default' : 'outline'}
+              size="sm"
+              onClick={handleAutoGenerate}
+              disabled={isCreating}
+              className="flex-1"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              自動分析
+            </Button>
+          </div>
+
           {/* タイトル */}
           <div className="space-y-2">
             <label htmlFor="title" className="text-sm font-medium">
@@ -156,6 +180,7 @@ export function CreateWikiFromMessagesDialog({
             />
             <p className="text-xs text-gray-500">
               {messages.length}件のメッセージから生成されました
+              {generationMode === 'auto' && ' | 自動分析モード'}
             </p>
           </div>
 

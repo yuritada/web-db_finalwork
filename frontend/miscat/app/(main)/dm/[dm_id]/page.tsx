@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/channel/MessageList';
 import { MessageInput } from '@/components/channel/MessageInput';
 import { CreateWikiFromMessagesDialog } from '@/components/wiki/CreateWikiFromMessagesDialog';
-import { Message, getDMMessages, sendDMMessage } from '@/lib/api';
+import { Message, getDMMessages, sendDMMessage, createWikiPage } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { BookText } from 'lucide-react';
+import { BookText, Sparkles } from 'lucide-react';
+import { autoGenerateWikiContent, generateWikiTitle } from '@/lib/wikiGenerator';
 
 export default function DMDetailPage({ params }: { params: Promise<{ dm_id: string }> }) {
   const resolvedParams = use(params);
@@ -79,6 +80,33 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
     }
   };
 
+  // 即座に自動生成
+  const handleQuickAutoGenerate = async () => {
+    if (messages.length === 0) {
+      toast.error('メッセージがありません');
+      return;
+    }
+
+    try {
+      const autoContent = autoGenerateWikiContent(messages);
+      const autoTitle = generateWikiTitle(messages, `DMの会話: ${partnerUsername || partnerId}`);
+
+      const newPage = await createWikiPage({
+        title: autoTitle,
+        content: autoContent,
+      });
+
+      toast.success('Wikiページを自動生成しました');
+      router.push(`/wiki/${newPage.id}`);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error('Wikiの自動生成に失敗しました: ' + err.message);
+      } else {
+        toast.error('Wikiの自動生成に失敗しました');
+      }
+    }
+  };
+
   // ローディング中
   if (isLoading) {
     return (
@@ -109,15 +137,26 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl">{partnerUsername || partnerId}</CardTitle>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsWikiDialogOpen(true)}
-              disabled={messages.length === 0}
-            >
-              <BookText className="h-4 w-4 mr-2" />
-              Wikiにまとめる
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsWikiDialogOpen(true)}
+                disabled={messages.length === 0}
+              >
+                <BookText className="h-4 w-4 mr-2" />
+                Wikiにまとめる
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleQuickAutoGenerate}
+                disabled={messages.length === 0}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                自動生成
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

@@ -13,11 +13,13 @@ import {
   ChannelDetail,
   getChannel,
   getChannelMessages,
-  sendChannelMessage
+  sendChannelMessage,
+  createWikiPage
 } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { UserPlus, Users, BookText } from 'lucide-react';
+import { UserPlus, Users, BookText, Sparkles } from 'lucide-react';
+import { autoGenerateWikiContent, generateWikiTitle } from '@/lib/wikiGenerator';
 
 export default function ChannelDetailPage({ params }: { params: Promise<{ channel_id: string }> }) {
   const resolvedParams = use(params);
@@ -78,6 +80,33 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
     }
   };
 
+  // 即座に自動生成
+  const handleQuickAutoGenerate = async () => {
+    if (messages.length === 0) {
+      toast.error('メッセージがありません');
+      return;
+    }
+
+    try {
+      const autoContent = autoGenerateWikiContent(messages);
+      const autoTitle = generateWikiTitle(messages, `チャンネル: ${channel?.name || ''}`);
+
+      const newPage = await createWikiPage({
+        title: autoTitle,
+        content: autoContent,
+      });
+
+      toast.success('Wikiページを自動生成しました');
+      router.push(`/wiki/${newPage.id}`);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error('Wikiの自動生成に失敗しました: ' + err.message);
+      } else {
+        toast.error('Wikiの自動生成に失敗しました');
+      }
+    }
+  };
+
   // ローディング中
   if (isLoading) {
     return (
@@ -125,6 +154,15 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
               >
                 <BookText className="h-4 w-4 mr-2" />
                 Wikiにまとめる
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleQuickAutoGenerate}
+                disabled={messages.length === 0}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                自動生成
               </Button>
               <Button
                 size="sm"
