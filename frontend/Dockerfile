@@ -1,18 +1,17 @@
 # 1. Builder Stage
-# alpine (musl) から slim (glibc) に変更
 FROM node:20-slim AS builder 
 WORKDIR /app
 
-# 修正: 'frontend/miscat' -> 'miscat'
-COPY miscat/package.json miscat/package-lock.json* ./
+# 修正: 先にすべてのファイルをコピーします
+COPY miscat/ .
+
+# 修正: 関連ファイルがすべて揃った状態で install を実行します
 RUN npm install
 
-# 修正: 'frontend/miscat' -> 'miscat'
-COPY miscat/ .
+# ビルドを実行します
 RUN npm run build
 
 # 2. Production Stage
-# alpine (musl) から slim (glibc) に変更
 FROM node:20-slim AS production 
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
