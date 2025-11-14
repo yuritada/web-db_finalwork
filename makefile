@@ -69,7 +69,6 @@ migrate-be:
 
 init:
 	@echo "Initializing database with test data..."
-	docker compose exec backend alembic upgrade head
 	docker compose exec backend python scripts/init_db.py
 
 setup: up

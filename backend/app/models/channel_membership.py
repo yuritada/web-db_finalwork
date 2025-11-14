@@ -2,9 +2,11 @@
 Channel Membership Model
 多対多の関係: User <-> Channel
 """
-from sqlalchemy import String, Integer, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy import Integer, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
+import uuid
 
 from .base import Base
 
@@ -18,8 +20,8 @@ class ChannelMembership(Base):
     __tablename__ = "channel_memberships"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[str] = mapped_column(
-        String(36),
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )

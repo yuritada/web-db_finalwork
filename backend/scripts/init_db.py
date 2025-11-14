@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.db.connect import get_session
 from app.db.create import create_user, create_channel, add_channel_member, create_wiki_page
 from app.models.user import UserKategori
-from app.models.wiki import PermissionLevel
+from app.models.wiki import PermissionLevel, WikiPage
 from app.schemas.user import UserCreate
 from app.schemas.channel import ChannelCreate
 from app.schemas.wiki import WikiPageCreate
@@ -113,9 +113,14 @@ def init_sample_channels(db, users):
                     print(f"    + Added {user.username} to #{channel.name}")
                 except IntegrityError:
                     db.rollback()
+                    print(f"    - {user.username} already a member of #{channel.name}")
                 except Exception as e:
-                    db.rollback()
-                    print(f"    ! Error adding {user.username}: {e}")
+                    # "User is already a member" エラーも無視
+                    if "already a member" in str(e):
+                        print(f"    - {user.username} already a member of #{channel.name}")
+                    else:
+                        db.rollback()
+                        print(f"    ! Error adding {user.username}: {e}")
 
         except IntegrityError:
             db.rollback()
@@ -192,6 +197,15 @@ def init_sample_wiki_pages(db, users):
     created_pages = []
     for page_data in wiki_pages_data:
         try:
+            # 既存のページをチェック
+            from app.db.read import get_wiki_page_by_id
+            existing_page = db.query(WikiPage).filter(WikiPage.title == page_data.title).first()
+
+            if existing_page:
+                print(f"  - Wiki page already exists: {page_data.title}")
+                created_pages.append(existing_page)
+                continue
+
             page = create_wiki_page(db, page_data, creator.id)
             created_pages.append(page)
             print(f"  ✓ Created wiki page: {page.title}")
