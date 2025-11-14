@@ -1,5 +1,5 @@
 # ベースイメージ
-FROM node:20-alpine
+FROM node:20-slim
 
 # 作業ディレクトリ
 WORKDIR /app
