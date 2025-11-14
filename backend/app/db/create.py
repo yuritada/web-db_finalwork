@@ -282,3 +282,42 @@ def create_dm_message(
     db.refresh(db_message)
 
     return db_message
+
+# Channel membership operations
+
+def add_channel_member(db: Session, channel_id: int, user_id: uuid.UUID):
+    """
+    チャンネルにメンバーを追加
+
+    Args:
+        db: データベースセッション
+        channel_id: チャンネルID
+        user_id: 追加するユーザーID
+
+    Returns:
+        作成されたChannelMembershipオブジェクト
+
+    Raises:
+        Exception: すでにメンバーの場合や、ユーザー/チャンネルが存在しない場合
+    """
+    from app.models.channel_membership import ChannelMembership
+
+    # 既にメンバーかチェック
+    existing = db.query(ChannelMembership).filter(
+        ChannelMembership.user_id == user_id,
+        ChannelMembership.channel_id == channel_id
+    ).first()
+
+    if existing:
+        raise Exception("User is already a member of this channel")
+
+    membership = ChannelMembership(
+        user_id=user_id,
+        channel_id=channel_id
+    )
+
+    db.add(membership)
+    db.commit()
+    db.refresh(membership)
+
+    return membership

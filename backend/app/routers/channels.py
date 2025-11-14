@@ -11,7 +11,9 @@ from app.db.create import create_channel, create_channel_message
 from app.db.read import (
     get_all_channels,
     get_channel_by_id,
-    get_channel_messages_with_sender
+    get_channel_messages_with_sender,
+    get_user_by_id,
+    get_channel_members
 )
 from app.core.dependencies import get_current_user
 from app.models.user import User
@@ -22,6 +24,13 @@ from app.schemas.channel import (
     MessageCreate,
     MessageWithSender
 )
+from pydantic import BaseModel
+
+
+# リクエストスキーマ
+class MemberAddRequest(BaseModel):
+    user_id: str
+
 
 router = APIRouter(prefix="/channels", tags=["Channels"])
 
@@ -145,15 +154,18 @@ async def get_channel_details(
             detail=f"Channel with id {channel_id} not found"
         )
 
-    # ChannelDetail型で返す（member_countとmembersはデフォルト値）
+    # メンバー情報を取得
+    members = get_channel_members(db, channel_id)
+
+    # ChannelDetail型で返す
     return ChannelDetail(
         id=channel.id,
         name=channel.name,
         description=channel.description,
         is_private=channel.is_private,
         created_at=channel.created_at,
-        member_count=0,  # Phase 5で実装予定
-        members=[]  # Phase 5で実装予定
+        member_count=len(members),
+        members=members
     )
 
 
@@ -270,3 +282,76 @@ async def get_channel_message_history(
 
     # 辞書リストをPydanticモデルに変換
     return [MessageWithSender(**msg) for msg in messages]
+
+
+# ===== チャンネルメンバー管理 =====
+
+@router.post("/{channel_id}/members", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def add_member_to_channel(
+    channel_id: int,
+    request: MemberAddRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+):
+    """
+    チャンネルにメンバーを追加する
+
+    POST /channels/{channel_id}/members
+
+    **認証**: 必須
+
+    **Args:**
+        channel_id: チャンネルID
+        user_id: 追加するユーザーのID (request body)
+        current_user: 認証済みユーザー
+        db: データベースセッション
+
+    **Returns:**
+        {"success": true, "message": "Member added successfully"}
+
+    **Raises:**
+        404: チャンネルまたはユーザーが存在しない場合
+        400: すでにメンバーの場合
+        401: 未認証の場合
+    """
+    from app.db.create import add_channel_member
+    import uuid
+
+    # チャンネル存在チェック
+    channel = get_channel_by_id(db, channel_id)
+    if not channel:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Channel with id {channel_id} not found"
+        )
+
+    # ユーザー存在チェック
+    try:
+        user_uuid = uuid.UUID(request.user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid user ID format"
+        )
+
+    user = get_user_by_id(db, user_uuid)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {request.user_id} not found"
+        )
+
+    # メンバー追加
+    try:
+        add_channel_member(db, channel_id, user_uuid)
+        return {"success": True, "message": "Member added successfully"}
+    except Exception as e:
+        if "already a member" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to add member: {str(e)}"
+        )

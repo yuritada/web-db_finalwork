@@ -7,7 +7,7 @@ from typing import List
 
 from app.db.connect import get_session
 from app.db.create import create_tag, assign_tag_to_user
-from app.db.read import get_tags_for_user, get_tag_by_id, get_user_by_id
+from app.db.read import get_all_tags, get_tags_for_user, get_tag_by_id, get_user_by_id
 from app.db.delete import delete_tag, remove_tag_assignment
 from app.core.dependencies import (
     get_current_user,
@@ -31,7 +31,10 @@ async def get_tags(
     db: Session = Depends(get_session)
 ):
     """
-    ユーザーに割り当てられたタグ一覧を取得
+    すべてのタグ一覧を取得
+
+    v3仕様書: GET /tags
+    全ユーザーがすべてのタグを閲覧可能
 
     Args:
         current_user: 認証済みユーザー
@@ -40,7 +43,7 @@ async def get_tags(
     Returns:
         List[TagPublic]: タグ一覧
     """
-    tags = get_tags_for_user(db, current_user.id)
+    tags = get_all_tags(db)
     return tags
 
 

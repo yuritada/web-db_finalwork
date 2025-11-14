@@ -3,14 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { DMCard } from '@/components/dm/DMCard';
+import { NewDMDialog } from '@/components/dm/NewDMDialog';
 import { DMConversation, getDMConversations } from '@/lib/api';
 import { toast } from 'sonner';
+import { Plus } from 'lucide-react';
 
 export default function DMPage() {
   const router = useRouter();
   const [conversations, setConversations] = useState<DMConversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isNewDMDialogOpen, setIsNewDMDialogOpen] = useState(false);
 
   // DM会話一覧取得
   const fetchConversations = async () => {
@@ -55,6 +59,10 @@ export default function DMPage() {
             他のユーザーと1対1でメッセージを送受信できます
           </p>
         </div>
+        <Button onClick={() => setIsNewDMDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          新しいDM
+        </Button>
       </div>
 
       {/* DM一覧 */}
@@ -62,10 +70,14 @@ export default function DMPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12">
-              <p className="text-gray-500">まだDMがありません。</p>
-              <p className="text-sm text-gray-400 mt-2">
-                ユーザー検索からメッセージを送信してDMを開始できます。
-              </p>
+              <p className="text-gray-500 mb-4">まだDMがありません。</p>
+              <Button
+                onClick={() => setIsNewDMDialogOpen(true)}
+                variant="outline"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                新しいDMを開始
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -73,13 +85,19 @@ export default function DMPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {conversations.map((dm) => (
             <DMCard
-              key={dm.partner_id}
+              key={dm.user_id}
               dm={dm}
-              onClick={() => router.push(`/dm/${dm.partner_id}`)}
+              onClick={() => router.push(`/dm/${dm.user_id}?username=${encodeURIComponent(dm.username)}`)}
             />
           ))}
         </div>
       )}
+
+      {/* 新しいDMダイアログ */}
+      <NewDMDialog
+        open={isNewDMDialogOpen}
+        onOpenChange={setIsNewDMDialogOpen}
+      />
     </div>
   );
 }

@@ -3,8 +3,10 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/channel/MessageList';
 import { MessageInput } from '@/components/channel/MessageInput';
+import { AddMemberDialog } from '@/components/channel/AddMemberDialog';
 import {
   Message,
   ChannelDetail,
@@ -14,6 +16,7 @@ import {
 } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import { UserPlus, Users } from 'lucide-react';
 
 export default function ChannelDetailPage({ params }: { params: Promise<{ channel_id: string }> }) {
   const resolvedParams = use(params);
@@ -22,6 +25,7 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
   const [channel, setChannel] = useState<ChannelDetail | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAddMemberDialogOpen, setIsAddMemberDialogOpen] = useState(false);
 
   // チャンネル情報とメッセージ取得
   const fetchData = async () => {
@@ -105,20 +109,50 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl">#{channel.name}</CardTitle>
-            {channel.is_private && (
-              <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded">
-                🔒 プライベート
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {channel.is_private && (
+                <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded">
+                  🔒 プライベート
+                </span>
+              )}
+              <Button
+                size="sm"
+                onClick={() => setIsAddMemberDialogOpen(true)}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                メンバー追加
+              </Button>
+            </div>
           </div>
           {channel.description && (
             <p className="text-sm text-gray-600 mt-2">{channel.description}</p>
           )}
         </CardHeader>
         <CardContent>
-          <p className="text-xs text-gray-500">
-            チャンネルID: {channel.id}
-          </p>
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500">
+              チャンネルID: {channel.id}
+            </p>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Users className="h-4 w-4" />
+              <span>{channel.member_count} メンバー</span>
+            </div>
+            {channel.members && channel.members.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-medium text-gray-700 mb-2">メンバー一覧:</p>
+                <div className="flex flex-wrap gap-2">
+                  {channel.members.map((member) => (
+                    <span
+                      key={member.id}
+                      className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                    >
+                      {member.username}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -130,6 +164,14 @@ export default function ChannelDetailPage({ params }: { params: Promise<{ channe
         />
         <MessageInput onSend={handleSendMessage} />
       </div>
+
+      {/* メンバー追加ダイアログ */}
+      <AddMemberDialog
+        open={isAddMemberDialogOpen}
+        onOpenChange={setIsAddMemberDialogOpen}
+        channelId={parseInt(resolvedParams.channel_id)}
+        onMemberAdded={fetchData}
+      />
     </div>
   );
 }

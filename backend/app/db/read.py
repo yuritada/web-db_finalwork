@@ -70,6 +70,11 @@ def get_tag_by_id(db: Session, tag_id: int) -> Optional[Tag]:
     return db.query(Tag).filter(Tag.id == tag_id).first()
 
 
+def get_all_tags(db: Session) -> List[Tag]:
+    """すべてのタグを取得"""
+    return db.query(Tag).order_by(Tag.id).all()
+
+
 def get_tags_for_user(db: Session, user_id: uuid.UUID) -> List[Tag]:
     """ユーザーに割り当てられたタグ一覧を取得"""
     # UserTagテーブルからユーザーに割り当てられたtag_idを取得
@@ -362,3 +367,57 @@ def get_dm_conversations(db: Session, user_id: uuid.UUID) -> List[dict]:
     )
 
     return conversations
+
+
+# Channel membership operations
+
+def get_channel_members(db: Session, channel_id: int) -> List[dict]:
+    """
+    チャンネルのメンバーリストを取得
+
+    Args:
+        db: データベースセッション
+        channel_id: チャンネルID
+
+    Returns:
+        メンバー情報のリスト（ユーザーID、ユーザー名、メールアドレス）
+    """
+    from app.models.channel_membership import ChannelMembership
+
+    memberships = db.query(ChannelMembership).filter(
+        ChannelMembership.channel_id == channel_id
+    ).all()
+
+    members = []
+    for membership in memberships:
+        user = get_user_by_id(db, membership.user_id)
+        if user:
+            members.append({
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email
+            })
+
+    return members
+
+
+def is_channel_member(db: Session, user_id: uuid.UUID, channel_id: int) -> bool:
+    """
+    ユーザーがチャンネルのメンバーかどうかを確認
+
+    Args:
+        db: データベースセッション
+        user_id: ユーザーID
+        channel_id: チャンネルID
+
+    Returns:
+        メンバーならTrue、それ以外False
+    """
+    from app.models.channel_membership import ChannelMembership
+
+    membership = db.query(ChannelMembership).filter(
+        ChannelMembership.user_id == user_id,
+        ChannelMembership.channel_id == channel_id
+    ).first()
+
+    return membership is not None

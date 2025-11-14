@@ -31,10 +31,10 @@ export function DMCard({ dm, onClick }: DMCardProps) {
     >
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{dm.partner_username}</CardTitle>
+          <CardTitle className="text-lg">{dm.username}</CardTitle>
         </div>
         <CardDescription>
-          {dm.partner_id}
+          {dm.user_id}
         </CardDescription>
       </CardHeader>
       <CardContent>

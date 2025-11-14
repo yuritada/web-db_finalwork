@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageList } from '@/components/channel/MessageList';
 import { MessageInput } from '@/components/channel/MessageInput';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 export default function DMDetailPage({ params }: { params: Promise<{ dm_id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,6 +21,9 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
   // dm_idは実際にはpartner_idとして扱う
   const partnerId = resolvedParams.dm_id;
 
+  // URLパラメータからユーザー名を取得
+  const usernameFromUrl = searchParams.get('username');
+
   // メッセージ履歴取得
   const fetchMessages = async () => {
     try {
@@ -27,8 +31,11 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
       const data = await getDMMessages(partnerId);
       setMessages(data);
 
-      // パートナーのユーザー名を取得（メッセージから推測）
-      if (data.length > 0) {
+      // パートナーのユーザー名を設定
+      // 優先順位: URLパラメータ > メッセージから推測
+      if (usernameFromUrl) {
+        setPartnerUsername(usernameFromUrl);
+      } else if (data.length > 0) {
         const partnerMessage = data.find(m => m.sender_id === partnerId);
         if (partnerMessage) {
           setPartnerUsername(partnerMessage.sender_username);
