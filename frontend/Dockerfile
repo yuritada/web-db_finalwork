@@ -1,20 +1,20 @@
-# ベースイメージ
-FROM node:20-slim
-
-# 作業ディレクトリ
+# 1. Builder Stage
+# alpine (musl) から slim (glibc) に変更します
+FROM node:20-slim AS builder 
 WORKDIR /app
-
-# 'frontend/miscat' ディレクトリから package.json などをコピー
-COPY miscat/package.json miscat/package-lock.json* ./
-
-# 依存関係をインストール
+COPY frontend/miscat/package.json frontend/miscat/package-lock.json ./
 RUN npm install
+COPY frontend/miscat/ .
+RUN npm run build
 
-# 'frontend/miscat' の残りのファイルをコピー
-COPY miscat/ .
+# 2. Production Stage
+# alpine (musl) から slim (glibc) に変更します
+FROM node:20-slim AS production 
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
 
-# Next.jsが使用するポート
 EXPOSE 3000
-
-# 開発サーバー起動 (docker-compose.ymlで上書き可能)
-CMD ["npm", "run", "dev"]
+CMD ["npm", "start"]
