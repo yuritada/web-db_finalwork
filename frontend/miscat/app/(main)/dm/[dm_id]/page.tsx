@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,9 @@ import { CreateWikiFromMessagesDialog } from '@/components/wiki/CreateWikiFromMe
 import { Message, getDMMessages, sendDMMessage, createWikiPage } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { BookText, Sparkles } from 'lucide-react';
+import { BookText, Sparkles, Wifi, WifiOff } from 'lucide-react';
 import { autoGenerateWikiContent, generateWikiTitle } from '@/lib/wikiGenerator';
+import { useWebSocket, WebSocketMessage } from '@/hooks/useWebSocket';
 
 export default function DMDetailPage({ params }: { params: Promise<{ dm_id: string }> }) {
   const resolvedParams = use(params);
@@ -25,6 +26,43 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
 
   // dm_idは実際にはpartner_idとして扱う
   const partnerId = resolvedParams.dm_id;
+
+  // WebSocket URL
+  const wsBaseUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+  const wsUrl = user ? `${wsBaseUrl}/ws/dm/${partnerId}` : null;
+
+  // WebSocket接続
+  const { isConnected, lastMessage, sendMessage: wsSendMessage } = useWebSocket(wsUrl, {
+    onMessage: useCallback((message: WebSocketMessage) => {
+      if (message.type === 'new_message' && message.message) {
+        // 新しいメッセージを受信したら、メッセージリストに追加
+        // 自分が送ったメッセージは既にリストにあるので重複チェック
+        setMessages(prevMessages => {
+          const isDuplicate = prevMessages.some(
+            m => m.id === message.message.id ||
+            (m.content === message.message.content &&
+             m.sender_id === message.message.sender_id &&
+             Math.abs(new Date(m.created_at).getTime() - new Date(message.message.created_at).getTime()) < 1000)
+          );
+
+          if (isDuplicate) {
+            return prevMessages;
+          }
+
+          return [...prevMessages, message.message];
+        });
+      }
+    }, []),
+    onConnect: () => {
+      console.log('WebSocket connected to DM:', partnerId);
+    },
+    onDisconnect: () => {
+      console.log('WebSocket disconnected from DM:', partnerId);
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+    }
+  });
 
   // URLパラメータからユーザー名を取得
   const usernameFromUrl = searchParams.get('username');
@@ -64,13 +102,22 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
   // メッセージ送信
   const handleSendMessage = async (content: string) => {
     try {
+      // HTTP APIでメッセージを保存
       const newMessage = await sendDMMessage({
         receiver_id: partnerId,
         content,
       });
 
-      // メッセージリストに追加
+      // メッセージリストに即座に追加（楽観的更新）
       setMessages([...messages, newMessage]);
+
+      // WebSocketで他の接続にブロードキャスト
+      if (isConnected) {
+        wsSendMessage({
+          type: 'message',
+          message: newMessage
+        });
+      }
     } catch (err: unknown) {
       if (err instanceof Error) {
         throw new Error(err.message);
@@ -136,7 +183,23 @@ export default function DMDetailPage({ params }: { params: Promise<{ dm_id: stri
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">{partnerUsername || partnerId}</CardTitle>
+            <div className="flex items-center gap-3">
+              <CardTitle className="text-xl">{partnerUsername || partnerId}</CardTitle>
+              {/* WebSocket接続状態インジケーター */}
+              <div className="flex items-center gap-1.5">
+                {isConnected ? (
+                  <>
+                    <Wifi className="h-4 w-4 text-green-500" />
+                    <span className="text-xs text-green-600">リアルタイム</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-4 w-4 text-gray-400" />
+                    <span className="text-xs text-gray-500">オフライン</span>
+                  </>
+                )}
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
