@@ -25,6 +25,7 @@ class TagPublic(TagBase):
     """タグ公開情報"""
     id: int
     creator_id: uuid.UUID
+    creator_username: str = ""
 
     model_config = {"from_attributes": True}
 

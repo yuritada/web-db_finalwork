@@ -228,7 +228,7 @@ export default function TagsPage() {
                   <CardHeader>
                     <CardTitle className="text-lg">{tag.name}</CardTitle>
                     <CardDescription>
-                      作成者: {tag.creator_id}
+                      作成者: {tag.creator_username}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

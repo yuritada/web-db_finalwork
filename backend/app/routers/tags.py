@@ -41,10 +41,22 @@ async def get_tags(
         db: データベースセッション
 
     Returns:
-        List[TagPublic]: タグ一覧
+        List[TagPublic]: タグ一覧（作成者のユーザー名を含む）
     """
     tags = get_all_tags(db)
-    return tags
+
+    # 各タグに作成者のユーザー名を追加
+    result = []
+    for tag in tags:
+        creator = get_user_by_id(db, tag.creator_id)
+        result.append(TagPublic(
+            id=tag.id,
+            name=tag.name,
+            creator_id=tag.creator_id,
+            creator_username=creator.username if creator else "Unknown"
+        ))
+
+    return result
 
 
 @router.post("", response_model=TagPublic, status_code=status.HTTP_201_CREATED)
@@ -72,7 +84,12 @@ async def create_new_tag(
     # タグ名の重複チェックは DBの unique 制約で行われる
     try:
         new_tag = create_tag(db, tag_data, current_user.id)
-        return new_tag
+        return TagPublic(
+            id=new_tag.id,
+            name=new_tag.name,
+            creator_id=new_tag.creator_id,
+            creator_username=current_user.username
+        )
     except Exception as e:
         # unique constraint violation
         if "unique" in str(e).lower() or "duplicate" in str(e).lower():

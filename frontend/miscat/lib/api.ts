@@ -224,6 +224,7 @@ export interface TagPublic {
   id: number;
   name: string;
   creator_id: string;
+  creator_username: string;
 }
 
 export interface UserInfo {
