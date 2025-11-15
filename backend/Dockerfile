@@ -27,4 +27,4 @@ COPY . .
 # FastAPIサーバー起動コマンド
 # サーバー起動前にAlembicマイグレーションを実行し、その後Uvicornを起動する
 # docker-compose.yml と同様に、マイグレーション、DB初期化、シード投入を実行してからサーバーを起動する
-CMD ["alembic upgrade head && python -m scripts.init_db && python -m scripts.seed_users && uvicorn main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic upgrade head && python -m scripts.init_db && python -m scripts.seed_users && uvicorn main:app --host 0.0.0.0 --port 8000"]
