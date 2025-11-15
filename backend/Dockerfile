@@ -25,5 +25,5 @@ RUN uv pip install . --system --no-cache
 COPY . .
 
 # FastAPIサーバー起動コマンド
-# Poetryを経由しないため、直接 uvicorn を呼び出す
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# サーバー起動前にAlembicマイグレーションを実行し、その後Uvicornを起動する
+CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"]
